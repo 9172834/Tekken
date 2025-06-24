@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<audio id="background-audio" src="https://files.catbox.moe/mlycjo.mp3" loop autoplay></audio>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Unsung Legend of Christopher Shreve AKA Tekken</title>
@@ -190,7 +191,7 @@
 
     <section id="gallery" class="py-16 px-4 md:px-8 bg-gray-800 rounded-lg shadow-md mx-auto my-8 max-w-6xl">
         <div class="container mx-auto">
-            <h2 class="text-3xl md:text-4xl font-bold text-center mb-10 text-gray-100">Moments of Questionable Glory</h2>
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-10 text-gray-100">Moments He Thought Went Hard</h2>
             <div id="image-gallery-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
                 </div>
         </div>
@@ -198,13 +199,13 @@
 
     <footer class="bg-gray-950 text-white py-8 px-4 md:px-8 text-center rounded-t-lg shadow-inner">
         <p class="text-lg mb-4">
-            He did what this time? Immortalize the chaos send it in.
+            He did what this time? send it in.
         </p>
         <button id="contribute-button" class="inline-block bg-green-700 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-green-600 transition duration-300 transform hover:scale-105">
             Discord: jlaiii - discord.com / INCELS
         </button>
         <p class="text-sm opacity-70 mt-4">
-            &copy; 2025 The Fan Club of Christopher Shreve AKA Tekken. Probably not all rights reserved, he wouldn't care.
+            &copy; 2025 The Fan Club of Tekken. Probably not all rights reserved, he wouldn't care.
         </p>
         </footer>
 
@@ -328,8 +329,8 @@
                         const parts = line.split('|');
                         return {
                             src: parts[0] ? parts[0].trim() : '',
-                            alt: parts[1] ? parts[1].trim() : 'Tekken moment', // Default alt
-                            caption: parts[1] ? parts[1].trim() : 'A moment of questionable glory.' // Default caption
+                            alt: parts[1] ? parts[1].trim() : '', // Set alt to empty string if no caption
+                            caption: parts[1] ? parts[1].trim() : '' // Set caption to empty string if not provided
                         };
                     })
                     .filter(img => img.src); // Only include if src is present
@@ -348,11 +349,11 @@
             galleryContainer.innerHTML = ''; // Clear existing images to prevent duplicates on reload
             gloriousImages.forEach(image => {
                 const imageWrapper = document.createElement('div');
-                imageWrapper.className = 'bg-gray-700 p-2 rounded-xl shadow-md transform hover:scale-105 transition duration-300 cursor-pointer';
+                imageWrapper.className = 'bg-gray-700 p-2 rounded-xl shadow-md transform hover:scale-105 transition duration-300 cursor-pointer flex flex-col'; // Added flex-col for better vertical alignment
 
                 const imgElement = document.createElement('img');
                 imgElement.src = image.src;
-                imgElement.alt = image.alt;
+                imgElement.alt = image.alt; // Use empty string if no alt provided
                 imgElement.className = 'w-full h-auto rounded-lg mb-2 object-cover';
                 // Fallback for image loading errors
                 imgElement.onerror = function() {
@@ -361,12 +362,16 @@
                     console.error("Failed to load image:", image.src);
                 };
 
-                const captionElement = document.createElement('p');
-                captionElement.className = 'text-sm text-center text-gray-300'; /* Adjusted for dark mode */
-                captionElement.textContent = image.caption;
-
                 imageWrapper.appendChild(imgElement);
-                imageWrapper.appendChild(captionElement);
+
+                // Only create and append caption element if there's a caption to display
+                if (image.caption) {
+                    const captionElement = document.createElement('p');
+                    captionElement.className = 'text-sm text-center text-gray-300';
+                    captionElement.textContent = image.caption;
+                    imageWrapper.appendChild(captionElement);
+                }
+
                 galleryContainer.appendChild(imageWrapper);
 
                 // Add click listener to open modal
@@ -391,7 +396,16 @@
         function openImageModal(src, alt, caption) {
             modalImage.src = src;
             modalImage.alt = alt;
-            modalCaption.textContent = caption;
+
+            // Only set modalCaption text if caption is provided, otherwise clear it and hide the element
+            if (caption) {
+                modalCaption.textContent = caption;
+                modalCaption.style.display = 'block'; // Ensure it's visible if there's content
+            } else {
+                modalCaption.textContent = '';
+                modalCaption.style.display = 'none'; // Hide the caption element if no text
+            }
+
             imageModalOverlay.classList.add('active');
             document.body.style.overflow = 'hidden';
         }
@@ -404,6 +418,7 @@
             document.body.style.overflow = '';
             modalImage.src = '';
             modalCaption.textContent = '';
+            modalCaption.style.display = 'block'; // Reset display to default for next open
         }
 
         // Event listeners for closing the modal
