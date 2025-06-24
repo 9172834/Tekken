@@ -98,6 +98,56 @@
         #modal-close-button:hover {
             background-color: rgba(255, 255, 255, 0.2);
         }
+
+        /* Styles for the Info Modal */
+        #info-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10001;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+
+        #info-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #info-modal-content {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+            max-width: 32rem; /* approx 512px */
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        #info-modal-close-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: #4a5568; /* gray-700 */
+            cursor: pointer;
+            padding: 0.3125rem 0.625rem;
+            border-radius: 50%;
+            transition: background-color 0.2s ease-in-out;
+            line-height: 1;
+        }
+
+        #info-modal-close-button:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body class="text-gray-800 antialiased">
@@ -115,13 +165,8 @@
                 <p class="text-lg md:text-xl opacity-90">
                     Welcome, fellow enthusiasts, to the official fan club page dedicated to the one and only Tekken! Join us in celebrating his everyday, relatable triumphs and bewildering blunders.
                 </p>
-                <div class="mt-8">
-                    <a href="#quotes" class="inline-block bg-red-400 text-gray-900 font-bold py-3 px-8 rounded-full shadow-lg hover:bg-red-300 transition duration-300 transform hover:scale-105">
-                        Witness His Minor Mishaps
-                    </a>
-                </div>
             </div>
-            <div class="w-48 h-48 md:w-64 md:h-64 flex-shrink-0 rounded-full overflow-hidden border-4 border-red-300 shadow-2xl transition duration-500 transform hover:scale-105">
+            <div id="main-image-container" class="w-48 h-48 md:w-64 md:h-64 flex-shrink-0 rounded-full overflow-hidden border-4 border-red-300 shadow-2xl transition duration-500 transform hover:scale-105 cursor-pointer">
                 <img src="https://i.imgur.com/iTnsO02.png" alt="The Unsung Hero Christopher Shreve AKA Tekken" class="object-cover w-full h-full">
             </div>
         </div>
@@ -152,22 +197,31 @@
 
     <footer class="bg-gray-900 text-white py-8 px-4 md:px-8 text-center rounded-t-lg shadow-inner">
         <p class="text-lg mb-4">
-            Think you've captured another moment of questionable genius?
-            Help us expand the legend!
+            He did what this time? Immortalize the chaos
         </p>
         <button id="contribute-button" class="inline-block bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-green-400 transition duration-300 transform hover:scale-105">
-            Submit Your Contributions Here!
+            send it in.
         </button>
         <p class="text-sm opacity-70 mt-4">
             &copy; 2025 The Fan Club of Christopher Shreve AKA Tekken. Probably not all rights reserved, he wouldn't care.
         </p>
-    </footer>
+        </footer>
 
     <div id="image-modal-overlay" class="image-modal-overlay">
         <div id="image-modal-content">
             <button id="modal-close-button">&times;</button>
             <img id="modal-image" src="" alt="">
             <p id="modal-caption"></p>
+        </div>
+    </div>
+
+    <div id="info-modal-overlay" class="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-[10001] opacity-0 invisible transition-opacity duration-300">
+        <div id="info-modal-content" class="bg-white p-6 rounded-lg shadow-xl max-w-lg w-11/12 max-h-[90vh] overflow-y-auto relative">
+            <button id="info-modal-close-button" class="absolute top-2 right-2 text-gray-600 hover:text-gray-900 text-3xl leading-none">&times;</button>
+            <h3 class="text-2xl font-bold mb-4 text-gray-800">Information</h3>
+            <div id="info-content" class="text-gray-700 text-base leading-relaxed">
+                Loading information...
+            </div>
         </div>
     </div>
 
@@ -359,9 +413,77 @@
         const contributeButton = document.getElementById('contribute-button');
         if (contributeButton) {
             contributeButton.addEventListener('click', () => {
-                alert("Thanks for your interest in contributing! Please message me on Discord: jlaiii");
+                alert("Discord: jlaiii");
             });
         }
+
+        // --- Info Button and Modal Logic (repurposed for main image click) ---
+        const mainImageContainer = document.getElementById('main-image-container'); // Get the main image container
+        const infoModalOverlay = document.getElementById('info-modal-overlay');
+        const infoModalCloseButton = document.getElementById('info-modal-close-button');
+        const infoContent = document.getElementById('info-content');
+
+        // Event listener for clicking the main image
+        if (mainImageContainer) {
+            mainImageContainer.addEventListener('click', () => {
+                openInfoModal();
+            });
+        }
+
+        if (infoModalCloseButton) {
+            infoModalCloseButton.addEventListener('click', () => {
+                closeInfoModal();
+            });
+        }
+
+        if (infoModalOverlay) {
+            infoModalOverlay.addEventListener('click', (e) => {
+                if (e.target === infoModalOverlay) {
+                    closeInfoModal();
+                }
+            });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && infoModalOverlay.classList.contains('active')) {
+                closeInfoModal();
+            }
+        });
+
+
+        /**
+         * Opens the info modal and fetches content from info.txt.
+         */
+        async function openInfoModal() {
+            infoModalOverlay.classList.add('active');
+            infoModalOverlay.style.opacity = '1';
+            infoModalOverlay.style.visibility = 'visible';
+            document.body.style.overflow = 'hidden'; // Prevent scrolling body when modal is open
+
+            try {
+                const response = await fetch('info.txt');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const text = await response.text();
+                infoContent.textContent = text;
+            } catch (error) {
+                console.error('Error fetching info.txt:', error);
+                infoContent.textContent = "Failed to load information. Please ensure 'info.txt' exists.";
+            }
+        }
+
+        /**
+         * Closes the info modal.
+         */
+        function closeInfoModal() {
+            infoModalOverlay.classList.remove('active');
+            infoModalOverlay.style.opacity = '0';
+            infoModalOverlay.style.visibility = 'hidden';
+            document.body.style.overflow = ''; // Restore body scrolling
+            infoContent.textContent = "Loading information..."; // Reset content
+        }
+
 
         // Initial fetch and load when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', () => {
