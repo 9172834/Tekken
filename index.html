@@ -71,13 +71,25 @@
             align-items: center;
         }
 
-        #modal-image {
+        #modal-media-container { /* New container for dynamic media */
             max-width: 100%;
             max-height: 85vh;
-            object-fit: contain;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             border-radius: 8px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            overflow: hidden; /* Ensure content respects border-radius */
         }
+
+        #modal-media-container img,
+        #modal-media-container video {
+            max-width: 100%;
+            max-height: 100%; /* Fill the container */
+            object-fit: contain; /* Ensure media is fully visible */
+            display: block; /* Remove extra space below inline elements */
+        }
+
 
         #modal-caption {
             color: white;
@@ -212,8 +224,7 @@
     <div id="image-modal-overlay" class="image-modal-overlay">
         <div id="image-modal-content">
             <button id="modal-close-button">&times;</button>
-            <img id="modal-image" src="" alt="">
-            <p id="modal-caption"></p>
+            <div id="modal-media-container"></div> <p id="modal-caption"></p>
         </div>
     </div>
 
@@ -307,12 +318,12 @@
 
         // --- Image Gallery Management ---
         const galleryContainer = document.getElementById('image-gallery-container');
-        let gloriousImages = []; // Will be populated from the text file
+        let gloriousMedia = []; // Renamed to gloriousMedia as it will hold images and videos
 
         /**
-         * Fetches image data from a text file and loads them into the gallery.
+         * Fetches media data from a text file and loads them into the gallery.
          * Assumes the text file is named 'images.txt' in the same directory.
-         * Each line should be formatted as: imageUrl|caption
+         * Each line should be formatted as: mediaUrl|type:image|caption or mediaUrl|type:video|caption
          */
         async function fetchImages() {
             try {
@@ -321,81 +332,132 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const text = await response.text();
-                // Parse each line into an image object
-                gloriousImages = text.split('\n')
+                // Parse each line into a media object
+                gloriousMedia = text.split('\n')
                     .map(line => line.trim())
                     .filter(line => line.length > 0)
                     .map(line => {
                         const parts = line.split('|');
                         return {
                             src: parts[0] ? parts[0].trim() : '',
-                            alt: parts[1] ? parts[1].trim() : '', // Set alt to empty string if no caption
-                            caption: parts[1] ? parts[1].trim() : '' // Set caption to empty string if not provided
+                            type: parts[1] && parts[1].includes('type:') ? parts[1].split(':')[1].trim() : 'image', // Default to image if not specified
+                            caption: parts[2] ? parts[2].trim() : '' // Set caption to empty string if not provided
                         };
                     })
-                    .filter(img => img.src); // Only include if src is present
+                    .filter(media => media.src); // Only include if src is present
 
-                loadAllImages(); // Load images into the DOM after fetching
+                loadAllMedia(); // Load media into the DOM after fetching
             } catch (error) {
                 console.error('Error fetching images:', error);
-                galleryContainer.innerHTML = '<p class="text-center text-red-500">Failed to load images. Please check "images.txt".</p>';
+                galleryContainer.innerHTML = '<p class="text-center text-red-500">Failed to load media. Please check "images.txt".</p>';
             }
         }
 
         /**
-         * Loads all images from the `gloriousImages` array into the gallery.
+         * Loads all media from the `gloriousMedia` array into the gallery.
          */
-        function loadAllImages() {
-            galleryContainer.innerHTML = ''; // Clear existing images to prevent duplicates on reload
-            gloriousImages.forEach(image => {
-                const imageWrapper = document.createElement('div');
-                imageWrapper.className = 'bg-gray-700 p-2 rounded-xl shadow-md transform hover:scale-105 transition duration-300 cursor-pointer flex flex-col'; // Added flex-col for better vertical alignment
+        function loadAllMedia() {
+            galleryContainer.innerHTML = ''; // Clear existing content to prevent duplicates on reload
+            gloriousMedia.forEach(media => {
+                const mediaWrapper = document.createElement('div');
+                mediaWrapper.className = 'bg-gray-700 p-2 rounded-xl shadow-md transform hover:scale-105 transition duration-300 cursor-pointer flex flex-col';
 
-                const imgElement = document.createElement('img');
-                imgElement.src = image.src;
-                imgElement.alt = image.alt; // Use empty string if no alt provided
-                imgElement.className = 'w-full h-auto rounded-lg mb-2 object-cover';
-                // Fallback for image loading errors
-                imgElement.onerror = function() {
-                    this.src = `https://placehold.co/${this.width || 300}x${this.height || 200}/cccccc/333333?text=Image+Error`;
-                    this.alt = "Image failed to load";
-                    console.error("Failed to load image:", image.src);
-                };
+                let mediaElement;
+                if (media.type === 'video') {
+                    mediaElement = document.createElement('video');
+                    mediaElement.src = media.src;
+                    mediaElement.className = 'w-full h-auto rounded-lg mb-2 object-cover';
+                    mediaElement.controls = false; // Controls off for thumbnail
+                    mediaElement.muted = true; // Mute for autoplay on hover if desired (not implemented here)
+                    mediaElement.autoplay = false; // No autoplay in gallery thumbnail
+                    mediaElement.loop = true; // Loop for thumbnail preview if you want (not implemented here)
+                    mediaElement.preload = 'metadata'; // Load just enough to get dimensions/thumbnail
+                    // Add a play icon overlay if you want to indicate it's a video
+                    const playIcon = document.createElement('div');
+                    playIcon.innerHTML = '<svg class="absolute inset-0 w-1/3 h-1/3 m-auto text-white opacity-80" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>';
+                    playIcon.className = 'absolute inset-0 flex items-center justify-center';
+                    mediaWrapper.style.position = 'relative'; // Enable absolute positioning for icon
+                    mediaWrapper.appendChild(mediaElement);
+                    mediaWrapper.appendChild(playIcon);
 
-                imageWrapper.appendChild(imgElement);
 
-                // Only create and append caption element if there's a caption to display
-                if (image.caption) {
-                    const captionElement = document.createElement('p');
-                    captionElement.className = 'text-sm text-center text-gray-300';
-                    captionElement.textContent = image.caption;
-                    imageWrapper.appendChild(captionElement);
+                    mediaElement.onerror = function() {
+                        this.src = `https://placehold.co/${this.width || 300}x${this.height || 200}/cccccc/333333?text=Video+Error`;
+                        console.error("Failed to load video:", media.src);
+                    };
+
+                } else { // Default to image if type is not video (handles images and GIFs)
+                    mediaElement = document.createElement('img');
+                    mediaElement.src = media.src;
+                    mediaElement.alt = media.caption;
+                    mediaElement.className = 'w-full h-auto rounded-lg mb-2 object-cover';
+                    mediaElement.onerror = function() {
+                        this.src = `https://placehold.co/${this.width || 300}x${this.height || 200}/cccccc/333333?text=Image+Error`;
+                        this.alt = "Media failed to load";
+                        console.error("Failed to load image:", media.src);
+                    };
+                    mediaWrapper.appendChild(mediaElement);
                 }
 
-                galleryContainer.appendChild(imageWrapper);
+
+                // Only create and append caption element if there's a caption to display
+                if (media.caption) {
+                    const captionElement = document.createElement('p');
+                    captionElement.className = 'text-sm text-center text-gray-300';
+                    captionElement.textContent = media.caption;
+                    mediaWrapper.appendChild(captionElement);
+                }
+
+                galleryContainer.appendChild(mediaWrapper);
 
                 // Add click listener to open modal
-                imageWrapper.addEventListener('click', () => {
-                    openImageModal(image.src, image.alt, image.caption);
+                mediaWrapper.addEventListener('click', () => {
+                    openImageModal(media.src, media.type, media.caption);
                 });
             });
         }
 
         // --- Image Modal Logic ---
         const imageModalOverlay = document.getElementById('image-modal-overlay');
-        const modalImage = document.getElementById('modal-image');
+        const modalMediaContainer = document.getElementById('modal-media-container'); // Changed to container
         const modalCaption = document.getElementById('modal-caption');
         const modalCloseButton = document.getElementById('modal-close-button');
 
         /**
-         * Opens the full-screen image modal.
-         * @param {string} src - The URL of the image to display.
-         * @param {string} alt - The alt text for the image.
-         * @param {string} caption - The caption to display below the image.
+         * Opens the full-screen media modal.
+         * @param {string} src - The URL of the media to display.
+         * @param {string} type - The type of media ('image' or 'video').
+         * @param {string} caption - The caption to display below the media.
          */
-        function openImageModal(src, alt, caption) {
-            modalImage.src = src;
-            modalImage.alt = alt;
+        function openImageModal(src, type, caption) {
+            // Clear previous media
+            modalMediaContainer.innerHTML = '';
+
+            let modalMediaElement;
+            if (type === 'video') {
+                modalMediaElement = document.createElement('video');
+                modalMediaElement.src = src;
+                modalMediaElement.controls = true; // Enable controls for modal video
+                modalMediaElement.autoplay = true; // Autoplay video in modal
+                modalMediaElement.loop = true; // Loop video in modal
+                modalMediaElement.setAttribute('playsinline', ''); // For iOS autoplay
+                modalMediaElement.className = 'w-full h-full object-contain rounded-lg'; // Apply styles
+                modalMediaElement.onerror = function() {
+                    console.error("Failed to load modal video:", src);
+                    // Optionally display a placeholder or error message
+                };
+            } else { // Default to image (handles images and GIFs)
+                modalMediaElement = document.createElement('img');
+                modalMediaElement.src = src;
+                modalMediaElement.alt = caption;
+                modalMediaElement.className = 'w-full h-full object-contain rounded-lg'; // Apply styles
+                modalMediaElement.onerror = function() {
+                    console.error("Failed to load modal image:", src);
+                    // Optionally display a placeholder or error message
+                };
+            }
+
+            modalMediaContainer.appendChild(modalMediaElement);
 
             // Only set modalCaption text if caption is provided, otherwise clear it and hide the element
             if (caption) {
@@ -416,7 +478,7 @@
         function closeImageModal() {
             imageModalOverlay.classList.remove('active');
             document.body.style.overflow = '';
-            modalImage.src = '';
+            modalMediaContainer.innerHTML = ''; // Clear media from modal
             modalCaption.textContent = '';
             modalCaption.style.display = 'block'; // Reset display to default for next open
         }
