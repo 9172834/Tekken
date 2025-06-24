@@ -7,12 +7,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom font for a more 'divine' feel */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:wght@700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8; /* Light blue-gray background */
+            background-color: #1a202c; /* Dark gray background */
+            color: #e2e8f0; /* Light gray text */
             position: relative;
             overflow-x: hidden; /* Prevent horizontal scrollbar from floating image */
+        }
+
+        h1, h2 {
+            font-family: 'Playfair Display', serif;
         }
 
         /* Styles for the floating image */
@@ -119,10 +124,11 @@
         }
 
         #info-modal-content {
-            background-color: white;
+            background-color: #2d3748; /* Darker gray for modal content */
+            color: #e2e8f0; /* Light text for modal content */
             padding: 1.5rem;
             border-radius: 0.5rem;
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.3), 0 4px 6px rgba(0, 0, 0, 0.15);
             max-width: 32rem; /* approx 512px */
             width: 90%;
             max-height: 90vh;
@@ -137,7 +143,7 @@
             background: none;
             border: none;
             font-size: 2rem;
-            color: #4a5568; /* gray-700 */
+            color: #cbd5e0; /* light gray for close button */
             cursor: pointer;
             padding: 0.3125rem 0.625rem;
             border-radius: 50%;
@@ -146,56 +152,56 @@
         }
 
         #info-modal-close-button:hover {
-            background-color: rgba(0, 0, 0, 0.1);
+            background-color: rgba(255, 255, 255, 0.1);
         }
     </style>
 </head>
-<body class="text-gray-800 antialiased">
+<body class="text-gray-200 antialiased">
 
     <div id="floating-cursor-image" class="hidden md:block">
         <img src="https://i.imgur.com/WhMRCcm.png" alt="Floating icon" class="w-full h-full object-cover rounded-full">
     </div>
 
-    <header class="relative bg-gradient-to-r from-gray-600 to-red-800 text-white py-16 px-4 md:px-8 overflow-hidden rounded-b-lg shadow-xl">
+    <header class="relative bg-gradient-to-r from-gray-800 to-red-900 text-white py-16 px-4 md:px-8 overflow-hidden rounded-b-lg shadow-xl">
         <div class="container mx-auto flex flex-col md:flex-row items-center justify-between z-10 relative">
             <div class="text-center md:text-left mb-8 md:mb-0">
-                <h1 class="text-4xl md:text-6xl font-extrabold mb-4 leading-tight rounded-lg p-2 bg-black bg-opacity-20 inline-block">
-                    Behold! The Legend of <span class="text-red-300">Christopher Shreve AKA Tekken</span>
+                <h1 class="text-4xl md:text-6xl font-extrabold mb-4 leading-tight rounded-lg p-2 bg-black bg-opacity-30 inline-block">
+                    Behold! The Legend of <span class="text-red-400">Christopher Shreve AKA Tekken</span>
                 </h1>
-                <p class="text-lg md:text-xl opacity-90">
+                <p class="text-lg md:text-xl opacity-90 mt-2">
                     Welcome, fellow enthusiasts, to the official fan club page dedicated to the one and only Tekken! Join us in celebrating his everyday, relatable triumphs and bewildering blunders.
                 </p>
             </div>
-            <div id="main-image-container" class="w-48 h-48 md:w-64 md:h-64 flex-shrink-0 rounded-full overflow-hidden border-4 border-red-300 shadow-2xl transition duration-500 transform hover:scale-105 cursor-pointer">
+            <div id="main-image-container" class="w-48 h-48 md:w-64 md:h-64 flex-shrink-0 rounded-full overflow-hidden border-4 border-red-500 shadow-2xl transition duration-500 transform hover:scale-105 cursor-pointer">
                 <img src="https://i.imgur.com/iTnsO02.png" alt="The Unsung Hero Christopher Shreve AKA Tekken" class="object-cover w-full h-full">
             </div>
         </div>
         <div class="absolute inset-0 bg-white opacity-5 blur-3xl animate-pulse"></div>
     </header>
 
-    <section id="quotes" class="py-16 px-4 md:px-8 bg-white rounded-lg shadow-md mx-auto my-8 max-w-5xl">
+    <section id="quotes" class="py-16 px-4 md:px-8 bg-gray-900 rounded-lg shadow-md mx-auto my-8 max-w-5xl">
         <div class="container mx-auto">
-            <h2 class="text-3xl md:text-4xl font-bold text-center mb-10 text-gray-700">Moments of Pure Tekken</h2>
-            <div id="quote-display" class="bg-gradient-to-br from-yellow-100 to-orange-100 p-8 rounded-xl shadow-2xl border-2 border-orange-300 text-center relative overflow-hidden flex items-center justify-center" style="min-height: 400px;">
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-10 text-gray-100">Moments of Pure Tekken</h2>
+            <div id="quote-display" class="bg-gradient-to-br from-yellow-800 to-orange-900 p-8 rounded-xl shadow-2xl border-2 border-orange-700 text-center relative overflow-hidden flex items-center justify-center" style="min-height: 400px;">
                 <img id="quote-image" src="" alt="Tekken Moment" class="w-full h-full object-contain rounded-lg transition-opacity duration-700 ease-in-out opacity-0">
             </div>
         </div>
     </section>
 
-    <section id="gallery" class="py-16 px-4 md:px-8 bg-gray-100 rounded-lg shadow-md mx-auto my-8 max-w-6xl">
+    <section id="gallery" class="py-16 px-4 md:px-8 bg-gray-800 rounded-lg shadow-md mx-auto my-8 max-w-6xl">
         <div class="container mx-auto">
-            <h2 class="text-3xl md:text-4xl font-bold text-center mb-10 text-gray-700">Moments of Questionable Glory</h2>
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-10 text-gray-100">Moments of Questionable Glory</h2>
             <div id="image-gallery-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
                 </div>
         </div>
     </section>
 
-    <footer class="bg-gray-900 text-white py-8 px-4 md:px-8 text-center rounded-t-lg shadow-inner">
+    <footer class="bg-gray-950 text-white py-8 px-4 md:px-8 text-center rounded-t-lg shadow-inner">
         <p class="text-lg mb-4">
             He did what this time? Immortalize the chaos send it in.
         </p>
-        <button id="contribute-button" class="inline-block bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-green-400 transition duration-300 transform hover:scale-105">
-            Discord: jlaiii
+        <button id="contribute-button" class="inline-block bg-green-700 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-green-600 transition duration-300 transform hover:scale-105">
+            Discord: jlaiii - discord.com / INCELS
         </button>
         <p class="text-sm opacity-70 mt-4">
             &copy; 2025 The Fan Club of Christopher Shreve AKA Tekken. Probably not all rights reserved, he wouldn't care.
@@ -342,7 +348,7 @@
             galleryContainer.innerHTML = ''; // Clear existing images to prevent duplicates on reload
             gloriousImages.forEach(image => {
                 const imageWrapper = document.createElement('div');
-                imageWrapper.className = 'bg-white p-2 rounded-xl shadow-md transform hover:scale-105 transition duration-300 cursor-pointer';
+                imageWrapper.className = 'bg-gray-700 p-2 rounded-xl shadow-md transform hover:scale-105 transition duration-300 cursor-pointer';
 
                 const imgElement = document.createElement('img');
                 imgElement.src = image.src;
@@ -356,7 +362,7 @@
                 };
 
                 const captionElement = document.createElement('p');
-                captionElement.className = 'text-sm text-center text-gray-600';
+                captionElement.className = 'text-sm text-center text-gray-300'; /* Adjusted for dark mode */
                 captionElement.textContent = image.caption;
 
                 imageWrapper.appendChild(imgElement);
