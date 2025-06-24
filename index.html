@@ -177,10 +177,12 @@
         <div class="container mx-auto">
             <h2 class="text-3xl md:text-4xl font-bold text-center mb-10 text-gray-700">Best Quotes</h2>
             <div id="quote-display" class="bg-gradient-to-br from-yellow-100 to-orange-100 p-8 rounded-xl shadow-2xl border-2 border-orange-300 text-center relative overflow-hidden">
-                <p id="current-quote" class="text-xl md:text-2xl italic text-gray-800 mb-4 transition-opacity duration-700 ease-in-out opacity-0">
-                    </p>
+                <img id="quote-image" src="" alt="Tekken Quote Image" class="w-full h-auto rounded-lg mb-4 object-contain" style="max-height: 400px; opacity: 0; transition: opacity 0.7s ease-in-out;">
+                <p id="current-quote-text" class="text-xl md:text-2xl italic text-gray-800 mb-4 transition-opacity duration-700 ease-in-out opacity-0">
+                </p>
                 <p id="quote-attribution" class="text-right text-base md:text-lg text-gray-600 font-semibold transition-opacity duration-700 ease-in-out opacity-0">
-                    </p>
+                    -Tekken
+                </p>
                 <div class="absolute top-4 left-4 text-orange-200 text-6xl opacity-30 select-none">&#x201C;</div>
                 <div class="absolute bottom-4 right-4 text-yellow-200 text-6xl opacity-30 select-none">&#x201D;</div>
             </div>
@@ -197,10 +199,10 @@
 
     <footer class="bg-gray-900 text-white py-8 px-4 md:px-8 text-center rounded-t-lg shadow-inner">
         <p class="text-lg mb-4">
-            He did what this time? Immortalize the chaos
+            He did what this time? Immortalize the chaos send it in.
         </p>
         <button id="contribute-button" class="inline-block bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-green-400 transition duration-300 transform hover:scale-105">
-            send it in.
+            Discord: jlaiii
         </button>
         <p class="text-sm opacity-70 mt-4">
             &copy; 2025 The Fan Club of Christopher Shreve AKA Tekken. Probably not all rights reserved, he wouldn't care.
@@ -235,14 +237,16 @@
         });
 
         // --- Quotes Management ---
-        const quoteElement = document.getElementById('current-quote');
+        const quoteImage = document.getElementById('quote-image');
+        const quoteTextElement = document.getElementById('current-quote-text');
         const attributionElement = document.getElementById('quote-attribution');
-        let divineQuotes = []; // Will be populated from the text file
-        let currentQuoteIndex = 0;
+        let divineQuotes = []; // Will be populated with objects { imageUrl, quoteText }
+        let currentQuoteIndex = 0; // Not strictly needed for random, but kept for consistency
 
         /**
-         * Fetches quotes from a text file.
+         * Fetches quotes (with images) from a text file.
          * Assumes the text file is named 'quotes.txt' in the same directory.
+         * Each line should be formatted as: imageUrl|quoteText
          */
         async function fetchQuotes() {
             try {
@@ -251,47 +255,78 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const text = await response.text();
-                // Split by new line and filter out empty lines
-                divineQuotes = text.split('\n').map(q => q.trim()).filter(q => q.length > 0);
+                // Split by new line and parse each line into an object
+                divineQuotes = text.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0)
+                    .map(line => {
+                        const parts = line.split('|');
+                        return {
+                            imageUrl: parts[0] ? parts[0].trim() : '',
+                            quoteText: parts[1] ? parts[1].trim() : 'A profound statement from Tekken.',
+                        };
+                    })
+                    .filter(q => q.imageUrl); // Only include if image URL is present
+
                 if (divineQuotes.length > 0) {
                     displayNextQuote(true); // Display the first quote immediately
-                    setInterval(displayNextQuote, 7000); // Start cycling quotes
+                    setInterval(displayNextQuote, 7000); // Start cycling quotes (7 seconds)
                 } else {
-                    quoteElement.textContent = "No tragic utterances yet. Please add some!";
-                    quoteElement.style.opacity = '1';
+                    quoteImage.style.opacity = '1';
+                    quoteTextElement.style.opacity = '1';
+                    attributionElement.style.opacity = '1';
+                    quoteTextElement.textContent = "No tragic utterances yet. Please add some!";
+                    quoteImage.src = "https://placehold.co/400x250/cccccc/333333?text=No+Quote+Image"; // Placeholder
                 }
             } catch (error) {
                 console.error('Error fetching quotes:', error);
-                quoteElement.textContent = "Failed to load quotes. Please check 'quotes.txt'.";
-                quoteElement.style.opacity = '1';
+                quoteImage.style.opacity = '1';
+                quoteTextElement.style.opacity = '1';
+                attributionElement.style.opacity = '1';
+                quoteTextElement.textContent = "Failed to load quotes. Please check 'quotes.txt'.";
+                quoteImage.src = "https://placehold.co/400x250/cccccc/333333?text=Error+Loading+Quotes"; // Placeholder
             }
         }
 
         /**
-         * Displays the next quote.
+         * Displays the next quote and image with fade effect.
          * @param {boolean} initialLoad - True if it's the first quote being displayed.
          */
         function displayNextQuote(initialLoad = false) {
             if (divineQuotes.length === 0) return;
 
-            if (!initialLoad) {
-                // Fade out current quote
-                quoteElement.style.opacity = '0';
-                attributionElement.style.opacity = '0';
-            }
+            // Fade out current quote and image
+            quoteImage.style.opacity = '0';
+            quoteTextElement.style.opacity = '0';
+            attributionElement.style.opacity = '0';
 
-            // Wait for fade out (or immediately for initial load), then change content and fade in
+            // Wait for fade out, then change content and fade in
             setTimeout(() => {
-                const quote = divineQuotes[currentQuoteIndex];
-                quoteElement.textContent = quote;
+                const randomIndex = Math.floor(Math.random() * divineQuotes.length);
+                const quoteData = divineQuotes[randomIndex];
+
+                // Update image source and alt text
+                quoteImage.src = quoteData.imageUrl;
+                quoteImage.alt = quoteData.quoteText; // Use quote text as alt for accessibility
+
+                // Fallback for image loading errors on the quote image
+                quoteImage.onerror = function() {
+                    this.src = `https://placehold.co/${this.width || 400}x${this.height || 250}/cccccc/333333?text=Image+Error`;
+                    this.alt = "Quote image failed to load";
+                    console.error("Failed to load quote image:", quoteData.imageUrl);
+                };
+
+                // Update quote text and attribution
+                quoteTextElement.textContent = quoteData.quoteText;
                 attributionElement.textContent = "-Tekken"; // Always attribute to Tekken
 
-                // Fade in new quote
-                quoteElement.style.opacity = '1';
+                // Fade in new quote and image
+                quoteImage.style.opacity = '1';
+                quoteTextElement.style.opacity = '1';
                 attributionElement.style.opacity = '1';
 
-                currentQuoteIndex = (currentQuoteIndex + 1) % divineQuotes.length;
-            }, initialLoad ? 0 : 700); // No delay for initial load
+                // currentQuoteIndex = (currentQuoteIndex + 1) % divineQuotes.length; // No longer needed for random
+            }, 700); // This delay should match your CSS transition duration for a smooth fade.
         }
 
         // --- Image Gallery Management ---
@@ -413,9 +448,9 @@
         const contributeButton = document.getElementById('contribute-button');
         if (contributeButton) {
             contributeButton.addEventListener('click', () => {
-                alert("Discord: jlaiii");
-            });
-        }
+                window.open('https://discord.com/invite/INCELS', '_blank'); // Opens in a new tab
+			});
+		}
 
         // --- Info Button and Modal Logic (repurposed for main image click) ---
         const mainImageContainer = document.getElementById('main-image-container'); // Get the main image container
@@ -487,8 +522,8 @@
 
         // Initial fetch and load when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', () => {
-            fetchQuotes();
-            fetchImages();
+            fetchQuotes(); // This will now fetch images and quotes for the cycling section
+            fetchImages(); // This remains for your gallery section
         });
     </script>
 
