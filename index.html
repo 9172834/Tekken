@@ -175,16 +175,9 @@
 
     <section id="quotes" class="py-16 px-4 md:px-8 bg-white rounded-lg shadow-md mx-auto my-8 max-w-5xl">
         <div class="container mx-auto">
-            <h2 class="text-3xl md:text-4xl font-bold text-center mb-10 text-gray-700">Best Quotes</h2>
-            <div id="quote-display" class="bg-gradient-to-br from-yellow-100 to-orange-100 p-8 rounded-xl shadow-2xl border-2 border-orange-300 text-center relative overflow-hidden">
-                <img id="quote-image" src="" alt="Tekken Quote Image" class="w-full h-auto rounded-lg mb-4 object-contain" style="max-height: 400px; opacity: 0; transition: opacity 0.7s ease-in-out;">
-                <p id="current-quote-text" class="text-xl md:text-2xl italic text-gray-800 mb-4 transition-opacity duration-700 ease-in-out opacity-0">
-                </p>
-                <p id="quote-attribution" class="text-right text-base md:text-lg text-gray-600 font-semibold transition-opacity duration-700 ease-in-out opacity-0">
-                    -Tekken
-                </p>
-                <div class="absolute top-4 left-4 text-orange-200 text-6xl opacity-30 select-none">&#x201C;</div>
-                <div class="absolute bottom-4 right-4 text-yellow-200 text-6xl opacity-30 select-none">&#x201D;</div>
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-10 text-gray-700">Moments of Pure Tekken</h2>
+            <div id="quote-display" class="bg-gradient-to-br from-yellow-100 to-orange-100 p-8 rounded-xl shadow-2xl border-2 border-orange-300 text-center relative overflow-hidden flex items-center justify-center" style="min-height: 400px;">
+                <img id="quote-image" src="" alt="Tekken Moment" class="w-full h-full object-contain rounded-lg transition-opacity duration-700 ease-in-out opacity-0">
             </div>
         </div>
     </section>
@@ -236,96 +229,72 @@
             floatingImage.style.top = `${e.clientY + window.scrollY}px`;
         });
 
-        // --- Quotes Management ---
+        // --- Quotes Management (now image slideshow) ---
         const quoteImage = document.getElementById('quote-image');
-        const quoteTextElement = document.getElementById('current-quote-text');
-        const attributionElement = document.getElementById('quote-attribution');
-        let divineQuotes = []; // Will be populated with objects { imageUrl, quoteText }
-        let currentQuoteIndex = 0; // Not strictly needed for random, but kept for consistency
+        let slideshowImages = []; // Will be populated with image URLs
+        let currentSlideshowIndex = 0; // To keep track of the current image
 
         /**
-         * Fetches quotes (with images) from a text file.
-         * Assumes the text file is named 'quotes.txt' in the same directory.
-         * Each line should be formatted as: imageUrl|quoteText
+         * Fetches image URLs for the slideshow from a text file.
+         * Assumes the text file is named 'quotes.txt' (can rename if desired)
+         * Each line should be a direct URL to an image.
          */
-        async function fetchQuotes() {
+        async function fetchSlideshowImages() {
             try {
-                const response = await fetch('quotes.txt');
+                const response = await fetch('quotes.txt'); // Using quotes.txt as the source
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const text = await response.text();
-                // Split by new line and parse each line into an object
-                divineQuotes = text.split('\n')
+                slideshowImages = text.split('\n')
                     .map(line => line.trim())
-                    .filter(line => line.length > 0)
-                    .map(line => {
-                        const parts = line.split('|');
-                        return {
-                            imageUrl: parts[0] ? parts[0].trim() : '',
-                            quoteText: parts[1] ? parts[1].trim() : 'A profound statement from Tekken.',
-                        };
-                    })
-                    .filter(q => q.imageUrl); // Only include if image URL is present
+                    .filter(line => line.length > 0); // Only include non-empty lines
 
-                if (divineQuotes.length > 0) {
-                    displayNextQuote(true); // Display the first quote immediately
-                    setInterval(displayNextQuote, 7000); // Start cycling quotes (7 seconds)
+                if (slideshowImages.length > 0) {
+                    displayNextSlideshowImage(true); // Display the first image immediately
+                    setInterval(displayNextSlideshowImage, 7000); // Cycle every 7 seconds
                 } else {
                     quoteImage.style.opacity = '1';
-                    quoteTextElement.style.opacity = '1';
-                    attributionElement.style.opacity = '1';
-                    quoteTextElement.textContent = "No tragic utterances yet. Please add some!";
-                    quoteImage.src = "https://placehold.co/400x250/cccccc/333333?text=No+Quote+Image"; // Placeholder
+                    quoteImage.src = "https://placehold.co/600x400/cccccc/333333?text=No+Images+Yet"; // Placeholder
+                    quoteImage.alt = "No images available";
                 }
             } catch (error) {
-                console.error('Error fetching quotes:', error);
+                console.error('Error fetching slideshow images:', error);
                 quoteImage.style.opacity = '1';
-                quoteTextElement.style.opacity = '1';
-                attributionElement.style.opacity = '1';
-                quoteTextElement.textContent = "Failed to load quotes. Please check 'quotes.txt'.";
-                quoteImage.src = "https://placehold.co/400x250/cccccc/333333?text=Error+Loading+Quotes"; // Placeholder
+                quoteImage.src = "https://placehold.co/600x400/cccccc/333333?text=Error+Loading+Images"; // Placeholder
+                quoteImage.alt = "Error loading images";
             }
         }
 
         /**
-         * Displays the next quote and image with fade effect.
-         * @param {boolean} initialLoad - True if it's the first quote being displayed.
+         * Displays the next image in the slideshow with fade effect.
+         * @param {boolean} initialLoad - True if it's the first image being displayed.
          */
-        function displayNextQuote(initialLoad = false) {
-            if (divineQuotes.length === 0) return;
+        function displayNextSlideshowImage(initialLoad = false) {
+            if (slideshowImages.length === 0) return;
 
-            // Fade out current quote and image
+            // Fade out current image
             quoteImage.style.opacity = '0';
-            quoteTextElement.style.opacity = '0';
-            attributionElement.style.opacity = '0';
 
             // Wait for fade out, then change content and fade in
             setTimeout(() => {
-                const randomIndex = Math.floor(Math.random() * divineQuotes.length);
-                const quoteData = divineQuotes[randomIndex];
+                const imageUrl = slideshowImages[currentSlideshowIndex];
 
                 // Update image source and alt text
-                quoteImage.src = quoteData.imageUrl;
-                quoteImage.alt = quoteData.quoteText; // Use quote text as alt for accessibility
+                quoteImage.src = imageUrl;
+                quoteImage.alt = `Tekken Moment ${currentSlideshowIndex + 1}`; // Generic alt text for cycling images
 
-                // Fallback for image loading errors on the quote image
+                // Fallback for image loading errors
                 quoteImage.onerror = function() {
-                    this.src = `https://placehold.co/${this.width || 400}x${this.height || 250}/cccccc/333333?text=Image+Error`;
-                    this.alt = "Quote image failed to load";
-                    console.error("Failed to load quote image:", quoteData.imageUrl);
+                    this.src = `https://placehold.co/${this.width || 600}x${this.height || 400}/cccccc/333333?text=Image+Error`;
+                    this.alt = "Slideshow image failed to load";
+                    console.error("Failed to load slideshow image:", imageUrl);
                 };
 
-                // Update quote text and attribution
-                quoteTextElement.textContent = quoteData.quoteText;
-                attributionElement.textContent = "-Tekken"; // Always attribute to Tekken
-
-                // Fade in new quote and image
+                // Fade in new image
                 quoteImage.style.opacity = '1';
-                quoteTextElement.style.opacity = '1';
-                attributionElement.style.opacity = '1';
 
-                // currentQuoteIndex = (currentQuoteIndex + 1) % divineQuotes.length; // No longer needed for random
+                currentSlideshowIndex = (currentSlideshowIndex + 1) % slideshowImages.length;
             }, 700); // This delay should match your CSS transition duration for a smooth fade.
         }
 
@@ -449,8 +418,8 @@
         if (contributeButton) {
             contributeButton.addEventListener('click', () => {
                 window.open('https://discord.com/invite/INCELS', '_blank'); // Opens in a new tab
-			});
-		}
+            });
+        }
 
         // --- Info Button and Modal Logic (repurposed for main image click) ---
         const mainImageContainer = document.getElementById('main-image-container'); // Get the main image container
@@ -522,8 +491,8 @@
 
         // Initial fetch and load when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', () => {
-            fetchQuotes(); // This will now fetch images and quotes for the cycling section
-            fetchImages(); // This remains for your gallery section
+            fetchSlideshowImages(); // Call the new function for the slideshow
+            fetchImages(); // Keep this for your gallery section
         });
     </script>
 
