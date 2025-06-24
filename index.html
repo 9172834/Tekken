@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Unsung Legend of Christopher Shreve AKA Tekken</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font for a more 'divine' feel */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            position: relative;
+            overflow-x: hidden; /* Prevent horizontal scrollbar from floating image */
+        }
+
+        /* Styles for the floating image */
+        #floating-cursor-image {
+            position: absolute;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s ease-out;
+            z-index: 9999;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.7);
+            animation: pulse-glow 2s infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            from { box-shadow: 0 0 10px rgba(255, 255, 0, 0.5); }
+            to { box-shadow: 0 0 20px rgba(255, 255, 0, 0.9); }
+        }
+
+        /* Styles for the image modal/lightbox */
+        #image-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+
+        #image-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #image-modal-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #modal-image {
+            max-width: 100%;
+            max-height: 85vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #modal-caption {
+            color: white;
+            margin-top: 10px;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        #modal-close-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: white;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 50%;
+            transition: background-color 0.2s ease-in-out;
+            z-index: 10001;
+        }
+
+        #modal-close-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased">
+
+    <div id="floating-cursor-image" class="hidden md:block">
+        <img src="https://i.imgur.com/WhMRCcm.png" alt="Floating icon" class="w-full h-full object-cover rounded-full">
+    </div>
+
+    <header class="relative bg-gradient-to-r from-gray-600 to-red-800 text-white py-16 px-4 md:px-8 overflow-hidden rounded-b-lg shadow-xl">
+        <div class="container mx-auto flex flex-col md:flex-row items-center justify-between z-10 relative">
+            <div class="text-center md:text-left mb-8 md:mb-0">
+                <h1 class="text-4xl md:text-6xl font-extrabold mb-4 leading-tight rounded-lg p-2 bg-black bg-opacity-20 inline-block">
+                    Behold! The Legend of <span class="text-red-300">Christopher Shreve AKA Tekken</span>
+                </h1>
+                <p class="text-lg md:text-xl opacity-90">
+                    Welcome, fellow enthusiasts, to the official fan club page dedicated to the one and only Tekken! Join us in celebrating his everyday, relatable triumphs and bewildering blunders.
+                </p>
+                <div class="mt-8">
+                    <a href="#quotes" class="inline-block bg-red-400 text-gray-900 font-bold py-3 px-8 rounded-full shadow-lg hover:bg-red-300 transition duration-300 transform hover:scale-105">
+                        Witness His Minor Mishaps
+                    </a>
+                </div>
+            </div>
+            <div class="w-48 h-48 md:w-64 md:h-64 flex-shrink-0 rounded-full overflow-hidden border-4 border-red-300 shadow-2xl transition duration-500 transform hover:scale-105">
+                <img src="https://i.imgur.com/iTnsO02.png" alt="The Unsung Hero Christopher Shreve AKA Tekken" class="object-cover w-full h-full">
+            </div>
+        </div>
+        <div class="absolute inset-0 bg-white opacity-5 blur-3xl animate-pulse"></div>
+    </header>
+
+    <section id="quotes" class="py-16 px-4 md:px-8 bg-white rounded-lg shadow-md mx-auto my-8 max-w-5xl">
+        <div class="container mx-auto">
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-10 text-gray-700">Best Quotes</h2>
+            <div id="quote-display" class="bg-gradient-to-br from-yellow-100 to-orange-100 p-8 rounded-xl shadow-2xl border-2 border-orange-300 text-center relative overflow-hidden">
+                <p id="current-quote" class="text-xl md:text-2xl italic text-gray-800 mb-4 transition-opacity duration-700 ease-in-out opacity-0">
+                    </p>
+                <p id="quote-attribution" class="text-right text-base md:text-lg text-gray-600 font-semibold transition-opacity duration-700 ease-in-out opacity-0">
+                    </p>
+                <div class="absolute top-4 left-4 text-orange-200 text-6xl opacity-30 select-none">&#x201C;</div>
+                <div class="absolute bottom-4 right-4 text-yellow-200 text-6xl opacity-30 select-none">&#x201D;</div>
+            </div>
+        </div>
+    </section>
+
+    <section id="gallery" class="py-16 px-4 md:px-8 bg-gray-100 rounded-lg shadow-md mx-auto my-8 max-w-6xl">
+        <div class="container mx-auto">
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-10 text-gray-700">Moments of Questionable Glory</h2>
+            <div id="image-gallery-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                </div>
+        </div>
+    </section>
+
+    <footer class="bg-gray-900 text-white py-8 px-4 md:px-8 text-center rounded-t-lg shadow-inner">
+        <p class="text-lg mb-4">
+            Think you've captured another moment of questionable genius?
+            Help us expand the legend!
+        </p>
+        <button id="contribute-button" class="inline-block bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-green-400 transition duration-300 transform hover:scale-105">
+            Submit Your Contributions Here!
+        </button>
+        <p class="text-sm opacity-70 mt-4">
+            &copy; 2025 The Fan Club of Christopher Shreve AKA Tekken. Probably not all rights reserved, he wouldn't care.
+        </p>
+    </footer>
+
+    <div id="image-modal-overlay" class="image-modal-overlay">
+        <div id="image-modal-content">
+            <button id="modal-close-button">&times;</button>
+            <img id="modal-image" src="" alt="">
+            <p id="modal-caption"></p>
+        </div>
+    </div>
+
+    <script>
+        // --- Floating Cursor Image Management ---
+        const floatingImage = document.getElementById('floating-cursor-image');
+
+        document.addEventListener('mousemove', (e) => {
+            floatingImage.style.left = `${e.clientX + window.scrollX}px`;
+            floatingImage.style.top = `${e.clientY + window.scrollY}px`;
+        });
+
+        // --- Quotes Management ---
+        const quoteElement = document.getElementById('current-quote');
+        const attributionElement = document.getElementById('quote-attribution');
+        let divineQuotes = []; // Will be populated from the text file
+        let currentQuoteIndex = 0;
+
+        /**
+         * Fetches quotes from a text file.
+         * Assumes the text file is named 'quotes.txt' in the same directory.
+         */
+        async function fetchQuotes() {
+            try {
+                const response = await fetch('quotes.txt');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const text = await response.text();
+                // Split by new line and filter out empty lines
+                divineQuotes = text.split('\n').map(q => q.trim()).filter(q => q.length > 0);
+                if (divineQuotes.length > 0) {
+                    displayNextQuote(true); // Display the first quote immediately
+                    setInterval(displayNextQuote, 7000); // Start cycling quotes
+                } else {
+                    quoteElement.textContent = "No tragic utterances yet. Please add some!";
+                    quoteElement.style.opacity = '1';
+                }
+            } catch (error) {
+                console.error('Error fetching quotes:', error);
+                quoteElement.textContent = "Failed to load quotes. Please check 'quotes.txt'.";
+                quoteElement.style.opacity = '1';
+            }
+        }
+
+        /**
+         * Displays the next quote.
+         * @param {boolean} initialLoad - True if it's the first quote being displayed.
+         */
+        function displayNextQuote(initialLoad = false) {
+            if (divineQuotes.length === 0) return;
+
+            if (!initialLoad) {
+                // Fade out current quote
+                quoteElement.style.opacity = '0';
+                attributionElement.style.opacity = '0';
+            }
+
+            // Wait for fade out (or immediately for initial load), then change content and fade in
+            setTimeout(() => {
+                const quote = divineQuotes[currentQuoteIndex];
+                quoteElement.textContent = quote;
+                attributionElement.textContent = "-Tekken"; // Always attribute to Tekken
+
+                // Fade in new quote
+                quoteElement.style.opacity = '1';
+                attributionElement.style.opacity = '1';
+
+                currentQuoteIndex = (currentQuoteIndex + 1) % divineQuotes.length;
+            }, initialLoad ? 0 : 700); // No delay for initial load
+        }
+
+        // --- Image Gallery Management ---
+        const galleryContainer = document.getElementById('image-gallery-container');
+        let gloriousImages = []; // Will be populated from the text file
+
+        /**
+         * Fetches image data from a text file and loads them into the gallery.
+         * Assumes the text file is named 'images.txt' in the same directory.
+         * Each line should be formatted as: imageUrl|caption
+         */
+        async function fetchImages() {
+            try {
+                const response = await fetch('images.txt');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const text = await response.text();
+                // Parse each line into an image object
+                gloriousImages = text.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0)
+                    .map(line => {
+                        const parts = line.split('|');
+                        return {
+                            src: parts[0] ? parts[0].trim() : '',
+                            alt: parts[1] ? parts[1].trim() : 'Tekken moment', // Default alt
+                            caption: parts[1] ? parts[1].trim() : 'A moment of questionable glory.' // Default caption
+                        };
+                    })
+                    .filter(img => img.src); // Only include if src is present
+
+                loadAllImages(); // Load images into the DOM after fetching
+            } catch (error) {
+                console.error('Error fetching images:', error);
+                galleryContainer.innerHTML = '<p class="text-center text-red-500">Failed to load images. Please check "images.txt".</p>';
+            }
+        }
+
+        /**
+         * Loads all images from the `gloriousImages` array into the gallery.
+         */
+        function loadAllImages() {
+            galleryContainer.innerHTML = ''; // Clear existing images to prevent duplicates on reload
+            gloriousImages.forEach(image => {
+                const imageWrapper = document.createElement('div');
+                imageWrapper.className = 'bg-white p-2 rounded-xl shadow-md transform hover:scale-105 transition duration-300 cursor-pointer';
+
+                const imgElement = document.createElement('img');
+                imgElement.src = image.src;
+                imgElement.alt = image.alt;
+                imgElement.className = 'w-full h-auto rounded-lg mb-2 object-cover';
+                // Fallback for image loading errors
+                imgElement.onerror = function() {
+                    this.src = `https://placehold.co/${this.width || 300}x${this.height || 200}/cccccc/333333?text=Image+Error`;
+                    this.alt = "Image failed to load";
+                    console.error("Failed to load image:", image.src);
+                };
+
+                const captionElement = document.createElement('p');
+                captionElement.className = 'text-sm text-center text-gray-600';
+                captionElement.textContent = image.caption;
+
+                imageWrapper.appendChild(imgElement);
+                imageWrapper.appendChild(captionElement);
+                galleryContainer.appendChild(imageWrapper);
+
+                // Add click listener to open modal
+                imageWrapper.addEventListener('click', () => {
+                    openImageModal(image.src, image.alt, image.caption);
+                });
+            });
+        }
+
+        // --- Image Modal Logic ---
+        const imageModalOverlay = document.getElementById('image-modal-overlay');
+        const modalImage = document.getElementById('modal-image');
+        const modalCaption = document.getElementById('modal-caption');
+        const modalCloseButton = document.getElementById('modal-close-button');
+
+        /**
+         * Opens the full-screen image modal.
+         * @param {string} src - The URL of the image to display.
+         * @param {string} alt - The alt text for the image.
+         * @param {string} caption - The caption to display below the image.
+         */
+        function openImageModal(src, alt, caption) {
+            modalImage.src = src;
+            modalImage.alt = alt;
+            modalCaption.textContent = caption;
+            imageModalOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        /**
+         * Closes the full-screen image modal.
+         */
+        function closeImageModal() {
+            imageModalOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+            modalImage.src = '';
+            modalCaption.textContent = '';
+        }
+
+        // Event listeners for closing the modal
+        modalCloseButton.addEventListener('click', closeImageModal);
+        imageModalOverlay.addEventListener('click', (e) => {
+            if (e.target === imageModalOverlay) {
+                closeImageModal();
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && imageModalOverlay.classList.contains('active')) {
+                closeImageModal();
+            }
+        });
+
+        // --- Contribute Button Logic ---
+        const contributeButton = document.getElementById('contribute-button');
+        if (contributeButton) {
+            contributeButton.addEventListener('click', () => {
+                alert("Thanks for your interest in contributing! Please message me on Discord: jlaiii");
+            });
+        }
+
+        // Initial fetch and load when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchQuotes();
+            fetchImages();
+        });
+    </script>
+
+</body>
+</html>
