@@ -179,11 +179,14 @@
         <div class="container mx-auto flex flex-col md:flex-row items-center justify-between z-10 relative">
             <div class="text-center md:text-left mb-8 md:mb-0">
                 <h1 class="text-4xl md:text-6xl font-extrabold mb-4 leading-tight rounded-lg p-2 bg-black bg-opacity-30 inline-block">
-                    The Legend of <span class="text-red-400">Tekken</span> FAN CLUB!
+                    Behold! The Legend of <span class="text-red-400">Christopher Shreve AKA Tekken</span>
                 </h1>
                 <p class="text-lg md:text-xl opacity-90 mt-2">
                     Welcome, fellow enthusiasts, to the official fan club page dedicated to the one and only Tekken! Join us in celebrating his everyday, relatable triumphs and bewildering blunders.
                 </p>
+                <button id="music-toggle-button" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300">
+                    Pause Music
+                </button>
             </div>
             <div id="main-image-container" class="w-48 h-48 md:w-64 md:h-64 flex-shrink-0 rounded-full overflow-hidden border-4 border-red-500 shadow-2xl transition duration-500 transform hover:scale-105 cursor-pointer">
                 <img src="https://i.imgur.com/iTnsO02.png" alt="The Unsung Hero Christopher Shreve AKA Tekken" class="object-cover w-full h-full">
@@ -577,6 +580,36 @@
             fetchSlideshowImages(); // Call the new function for the slideshow
             fetchImages(); // Keep this for your gallery section
         });
+
+        // --- Background Audio Control ---
+        const backgroundAudio = document.getElementById('background-audio');
+        const musicToggleButton = document.getElementById('music-toggle-button');
+
+        let isPlaying = true; // Audio is set to autoplay, so assume it's playing initially
+
+        if (musicToggleButton && backgroundAudio) {
+            musicToggleButton.addEventListener('click', () => {
+                if (isPlaying) {
+                    backgroundAudio.pause();
+                    musicToggleButton.textContent = 'Play Music';
+                } else {
+                    backgroundAudio.play();
+                    musicToggleButton.textContent = 'Pause Music';
+                }
+                isPlaying = !isPlaying; // Toggle the state
+            });
+
+            // Handle potential autoplay blocking by browsers
+            backgroundAudio.addEventListener('play', () => {
+                isPlaying = true;
+                musicToggleButton.textContent = 'Pause Music';
+            });
+
+            backgroundAudio.addEventListener('pause', () => {
+                isPlaying = false;
+                musicToggleButton.textContent = 'Play Music';
+            });
+        }
     </script>
 
 </body>
