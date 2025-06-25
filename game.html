@@ -95,19 +95,39 @@
             pointer-events: auto; /* Allow clicks when popped up */
         }
 
+        /* --- CROSSHAIR STYLES - DRAWN WITH CSS --- */
         .crosshair {
             position: absolute;
-            width: 32px; /* Size of the crosshair */
+            width: 32px; /* Overall size of the crosshair container */
             height: 32px;
-            background-image: url('https://i.imgur.com/W2fP1N5.png'); /* Placeholder: Red crosshair */
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
+            /* No background-image needed anymore */
             transform: translate(-50%, -50%); /* Center the crosshair on mouse pointer */
             pointer-events: none; /* Allow clicks to pass through to elements below */
             z-index: 1000; /* Ensure it's on top */
             display: none; /* Hidden by default */
         }
+
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background-color: white; /* Color of the crosshair lines */
+        }
+
+        .crosshair::before { /* Vertical line */
+            width: 2px; /* Thickness of the vertical line */
+            height: 100%; /* Spans full height of the container */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .crosshair::after { /* Horizontal line */
+            width: 100%; /* Spans full width of the container */
+            height: 2px; /* Thickness of the horizontal line */
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        /* --- END CROSSHAIR STYLES --- */
 
         /* Responsive adjustments for smaller screens */
         @media (max-width: 1024px) { /* Adjust breakpoint for leaderboard */
