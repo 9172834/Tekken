@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<audio id="background-audio" src="https://files.catbox.moe/7714uu.mp3" loop autoplay></audio>
+<audio id="background-audio" src="https://files.catbox.moe/7714uu.mp3" loop></audio>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Unsung Legend of Christopher Shreve AKA Tekken</title>
@@ -15,6 +15,8 @@
             color: #e2e8f0; /* Light gray text */
             position: relative;
             overflow-x: hidden; /* Prevent horizontal scrollbar from floating image */
+            /* Ensure body covers full viewport for welcome modal positioning */
+            min-height: 100vh;
         }
 
         h1, h2 {
@@ -167,9 +169,107 @@
         #info-modal-close-button:hover {
             background-color: rgba(255, 255, 255, 0.1);
         }
+
+        /* Specific style for "NEW" badge */
+        .new-badge {
+            background-color: #EF4444; /* Tailwind red-500 */
+            color: white;
+            font-size: 0.75rem; /* text-xs */
+            font-weight: bold;
+            padding: 0.125rem 0.375rem; /* py-0.5 px-1.5 */
+            border-radius: 0.25rem; /* rounded */
+            margin-left: 0.5rem; /* ml-2 */
+            animation: pulse-new 1.5s infinite;
+        }
+
+        @keyframes pulse-new {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Styles for the new Welcome Modal */
+        #welcome-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(45deg, #1a202c, #2d3748, #1a202c);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20000; /* Higher than other modals */
+            transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #welcome-modal-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        #welcome-modal-content {
+            text-align: center;
+            background-color: rgba(45, 55, 72, 0.9); /* Darker gray with some transparency */
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5), 0 5px 15px rgba(0, 0, 0, 0.3);
+            max-width: 90%;
+            width: 500px;
+            border: 2px solid #dc2626; /* red-600 */
+        }
+
+        #welcome-enter-button {
+            background-color: #dc2626; /* Tailwind red-600 */
+            color: white;
+            font-weight: bold;
+            padding: 1rem 2.5rem;
+            border-radius: 9999px; /* rounded-full */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease-in-out;
+            border: none;
+            cursor: pointer;
+            font-size: 1.25rem; /* text-xl */
+            animation: pulsate-button 2s infinite ease-in-out;
+        }
+
+        #welcome-enter-button:hover {
+            background-color: #ef4444; /* Tailwind red-500 */
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes pulsate-button {
+            0% { transform: scale(1); box-shadow: 0 0 0 rgba(220, 38, 38, 0.7); }
+            50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(220, 38, 38, 0.9); }
+            100% { transform: scale(1); box-shadow: 0 0 0 rgba(220, 38, 38, 0.7); }
+        }
     </style>
 </head>
 <body class="text-gray-200 antialiased">
+
+    <!-- Welcome Modal Overlay -->
+    <div id="welcome-modal-overlay">
+        <div id="welcome-modal-content">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-red-400 mb-6">
+                Welcome, Fan!
+            </h1>
+            <p class="text-lg md:text-xl mb-8 leading-relaxed">
+                Prepare to dive into the legendary world of Tekken.
+            </p>
+            <button id="welcome-enter-button">
+                Enter Fan Club
+            </button>
+            
+        </div>
+    </div>
 
     <div id="floating-cursor-image" class="hidden md:block">
         <img src="https://i.imgur.com/WhMRCcm.png" alt="Floating icon" class="w-full h-full object-cover rounded-full">
@@ -192,6 +292,12 @@
                 <img src="https://i.imgur.com/iTnsO02.png" alt="The Unsung Hero Christopher Shreve AKA Tekken" class="object-cover w-full h-full">
             </div>
         </div>
+        <!-- Navigation for game.html -->
+        <nav class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex space-x-4">
+            <a href="game.html" class="flex items-center bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300">
+                Play the Tekken Game! <span class="new-badge">NEW</span>
+            </a>
+        </nav>
         <div class="absolute inset-0 bg-white opacity-5 blur-3xl animate-pulse"></div>
     </header>
 
@@ -575,26 +681,45 @@
         }
 
 
-        // Initial fetch and load when the DOM is fully loaded
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchSlideshowImages(); // Call the new function for the slideshow
-            fetchImages(); // Keep this for your gallery section
-        });
-
         // --- Background Audio Control ---
         const backgroundAudio = document.getElementById('background-audio');
         const musicToggleButton = document.getElementById('music-toggle-button');
+        const welcomeModalOverlay = document.getElementById('welcome-modal-overlay');
+        const welcomeEnterButton = document.getElementById('welcome-enter-button');
 
-        let isPlaying = true; // Audio is set to autoplay, so assume it's playing initially
+        let isPlaying = false; // Audio starts paused until user clicks 'Enter'
 
+        // Function to attempt playing audio
+        function tryPlayAudio() {
+            backgroundAudio.play().then(() => {
+                isPlaying = true;
+                musicToggleButton.textContent = 'Pause Music';
+                console.log("Music started successfully.");
+            }).catch(e => {
+                console.log("Autoplay prevented or failed:", e);
+                backgroundAudio.pause(); // Ensure it's paused if autoplay fails
+                isPlaying = false;
+                musicToggleButton.textContent = 'Play Music';
+            });
+        }
+
+        // Event listener for the Welcome modal's Enter button
+        if (welcomeEnterButton) {
+            welcomeEnterButton.addEventListener('click', () => {
+                welcomeModalOverlay.classList.add('hidden'); // Hide the welcome modal
+                document.body.style.overflow = ''; // Re-enable scrolling
+                tryPlayAudio(); // Attempt to play music
+            });
+        }
+
+        // Existing music toggle button logic
         if (musicToggleButton && backgroundAudio) {
             musicToggleButton.addEventListener('click', () => {
                 if (isPlaying) {
                     backgroundAudio.pause();
                     musicToggleButton.textContent = 'Play Music';
                 } else {
-                    backgroundAudio.play();
-                    musicToggleButton.textContent = 'Pause Music';
+                    tryPlayAudio(); // Use the common play function
                 }
                 isPlaying = !isPlaying; // Toggle the state
             });
@@ -610,6 +735,17 @@
                 musicToggleButton.textContent = 'Play Music';
             });
         }
+
+
+        // Initial fetch and load when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchSlideshowImages(); // Call the new function for the slideshow
+            fetchImages(); // Keep this for your gallery section
+
+            // Display the welcome modal on initial load, prevent scrolling
+            welcomeModalOverlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        });
     </script>
 
 </body>
