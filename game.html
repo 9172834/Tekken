@@ -365,7 +365,7 @@
         let imageLoadErrorMessage = ''; // Store error message for debug button
         let imageLoadError = false; // Flag to indicate if image loading failed
 
-        let characterImages = []; // This will now be populated from images.txt
+        let characterImages = []; // This will now be populated from gamepics.txt
         let currentWhackSound = null; // New variable to keep track of the currently playing whack sound
 
         // Difficulty settings
@@ -402,23 +402,19 @@
         const startGameSound = document.getElementById('startGameSound');
         const gameOverSound = document.getElementById('gameOverSound');
         const whackSounds = [
-            document.getElementById('whackSound2'), // Removed whackSound1
-            document.getElementById('whackSound3')  //
+            document.getElementById('whackSound2'),
+            document.getElementById('whackSound3')
         ];
 
         // Set initial volumes
         bgMusic.volume = 0.1;
         startGameSound.volume = 0.8;
         gameOverSound.volume = 0.8;
-        whackSounds.forEach(sound => sound.volume = 0.6); // Slightly lower volume for whack sounds
+        whackSounds.forEach(sound => sound.volume = 0.6);
 
         // Initialize GUN database
-        // IMPORTANT: Using a public peer is crucial for persistence across refreshes and sharing scores.
-        // If this line is commented out or an unreliable peer is used, scores will not persist.
-        const gun = Gun('https://gun-peer.herokuapp.com/gun'); // Using a common public peer for persistence
-
-        // Changed the GUN database key as requested
-        const highScoresRef = gun.get('tekkengamescore929199'); // A main key for all scores
+        const gun = Gun('https://gun-peer.herokuapp.com/gun');
+        const highScoresRef = gun.get('tekkengamescore929199');
 
         // Local cache for scores to manage updates and sorting
         const scoresCache = {};
@@ -428,37 +424,35 @@
             for (let i = 0; i < numHoles; i++) {
                 const holeDiv = document.createElement('div');
                 holeDiv.classList.add('hole');
-                holeDiv.dataset.id = i; // Assign a unique ID to each hole
+                holeDiv.dataset.id = i;
 
                 const moleImg = document.createElement('img');
                 moleImg.classList.add('mole-img');
                 moleImg.alt = 'TEKKEN Character';
-                // Add an error fallback for images
                 moleImg.onerror = function() {
-                    this.src = 'https://placehold.co/200x200/AAAAAA/FFFFFF?text=Error'; // Generic error placeholder
+                    this.src = 'https://placehold.co/200x200/AAAAAA/FFFFFF?text=Error';
                     console.error('Failed to load image:', this.src);
                 };
                 holeDiv.appendChild(moleImg);
                 gameBoard.appendChild(holeDiv);
                 holes.push(holeDiv);
 
-                // Add click listener to the hole (which contains the image)
                 holeDiv.addEventListener('click', whack);
             }
         }
 
         // Initialize holes
-        createHoles(9); // Create 9 holes (3x3 grid)
+        createHoles(9);
 
         // Function to get a random time based on current difficulty
-        function randomTime(type) { // 'type' can be 'popUp' or 'downTime'
+        function randomTime(type) {
             const config = difficulties[currentDifficulty];
             if (type === 'popUp') {
                 return Math.round(Math.random() * (config.maxPopUp - config.minPopUp) + config.minPopUp);
             } else if (type === 'downTime') {
                 return Math.round(Math.random() * (config.maxDownTime - config.minDownTime) + config.minDownTime);
             }
-            return 1000; // Default if type is not recognized
+            return 1000;
         }
 
         // Function to get a random hole that is not the last one
@@ -466,7 +460,7 @@
             const idx = Math.floor(Math.random() * holesArray.length);
             const hole = holesArray[idx];
             if (hole === lastHole) {
-                return randomHole(holesArray); // Recurse if it's the same hole
+                return randomHole(holesArray);
             }
             lastHole = hole;
             return hole;
@@ -479,7 +473,7 @@
                 return 'https://placehold.co/200x200/FF0000/FFFFFF?text=NO_IMAGE';
             }
             const idx = Math.floor(Math.random() * imagesArray.length);
-            if (idx === lastImageIndex && imagesArray.length > 1) { // Only recurse if there's more than one image
+            if (idx === lastImageIndex && imagesArray.length > 1) {
                 return randomImage(imagesArray);
             }
             lastImageIndex = idx;
@@ -488,28 +482,27 @@
 
         // Function to make a mole pop up
         function popUp() {
-            if (!gameActive) return; // Stop if game is not active
+            if (!gameActive) return;
             if (characterImages.length === 0) {
                 console.error("No character images available to pop up. This should ideally not happen if fallbacks are working.");
                 return;
             }
 
-            const popTime = randomTime('popUp'); // How long the mole stays up
-            const downTime = randomTime('downTime'); // How long before next pop-up
+            const popTime = randomTime('popUp');
+            const downTime = randomTime('downTime');
 
             const hole = randomHole(holes);
             const imgElement = hole.querySelector('.mole-img');
             const imageUrl = randomImage(characterImages);
 
-            imgElement.src = imageUrl; // Set the image source
-            hole.classList.add('active'); // Highlight the hole
-            imgElement.classList.add('popping'); // Make image visible
+            imgElement.src = imageUrl;
+            hole.classList.add('active');
+            imgElement.classList.add('popping');
 
-            // Set a timeout for the mole to go back down
             setTimeout(() => {
                 imgElement.classList.remove('popping');
                 hole.classList.remove('active');
-                if (gameActive) { // If game is still active, schedule next popUp
+                if (gameActive) {
                     popUpInterval = setTimeout(popUp, downTime);
                 }
             }, popTime);
@@ -517,48 +510,41 @@
 
         // Function to handle a whack
         function whack(e) {
-            if (!gameActive || !e.target.classList.contains('mole-img')) return; // Only if game is active and clicked on the image
+            if (!gameActive || !e.target.classList.contains('mole-img')) return;
 
             score++;
             scoreDisplay.textContent = score;
 
-            // Add 200ms to the timer for each successful whack
-            gameTime += 1.2; // Add 0.2 seconds (200ms)
-            timeDisplay.textContent = Math.floor(gameTime); // Update display, round down for cleaner look
+            gameTime += 1.2;
+            timeDisplay.textContent = Math.floor(gameTime);
 
-            if (Math.random() < 0.4) { 
-                // Stop the previously playing whack sound before playing a new one
+            if (Math.random() < 0.4) {
                 if (currentWhackSound) {
                     currentWhackSound.pause();
                     currentWhackSound.currentTime = 0;
                 }
 
-                // Play random whack sound
                 const randomWhackSound = whackSounds[Math.floor(Math.random() * whackSounds.length)];
-                randomWhackSound.currentTime = 0; // Rewind to start
+                randomWhackSound.currentTime = 0;
                 randomWhackSound.play().catch(e => console.error("Error playing whack sound:", e));
-                currentWhackSound = randomWhackSound; // Store the currently playing sound
+                currentWhackSound = randomWhackSound;
             }
 
-
-            // Immediately hide the whacked mole
             e.target.classList.remove('popping');
-            e.target.parentElement.classList.remove('active'); // Remove active from hole too
+            e.target.parentElement.classList.remove('active');
         }
 
         // Function to randomly change difficulty
         function changeDifficulty() {
             if (!gameActive) return;
 
-            // Select a random difficulty from 'medium' and 'hard'
             let newDifficulty = currentDifficulty;
-            while (newDifficulty === currentDifficulty) { // Ensure a different difficulty is chosen
+            while (newDifficulty === currentDifficulty) {
                 newDifficulty = selectableDifficulties[Math.floor(Math.random() * selectableDifficulties.length)];
             }
             currentDifficulty = newDifficulty;
             console.log("Difficulty changed to:", currentDifficulty);
 
-            // Reschedule pop-up to immediately reflect new difficulty if desired
             clearTimeout(popUpInterval);
             popUpInterval = setTimeout(popUp, randomTime('downTime'));
         }
@@ -569,101 +555,80 @@
                 sound.pause();
                 sound.currentTime = 0;
             });
-            currentWhackSound = null; // Clear the current whack sound reference
+            currentWhackSound = null;
         }
 
         // Function to start the game
         function startGame() {
             score = 0;
-            gameTime = 20; // Reset time to 20 seconds
-            currentDifficulty = selectableDifficulties[Math.floor(Math.random() * selectableDifficulties.length)]; // Start randomly with medium or hard
+            gameTime = 20;
+            currentDifficulty = selectableDifficulties[Math.floor(Math.random() * selectableDifficulties.length)];
             scoreDisplay.textContent = score;
             timeDisplay.textContent = gameTime;
             gameActive = true;
-            startButton.disabled = true; // Disable start button during game
-            document.body.style.cursor = 'none'; // Hide default cursor when game starts
-            debugButton.classList.add('hidden'); // Hide debug button if game starts successfully
+            startButton.disabled = true;
+            document.body.style.cursor = 'none';
+            debugButton.classList.add('hidden');
 
-            // Play start game sound
-            startGameSound.currentTime = 0; // Rewind to start
+            startGameSound.currentTime = 0;
             startGameSound.play().catch(e => console.error("Error playing start game sound:", e));
 
-            // Clear any existing intervals
             clearTimeout(timerId);
             clearTimeout(popUpInterval);
-            clearInterval(difficultyChangeInterval); // Clear old difficulty interval
-            stopAllWhackSounds(); // Ensure no whack sounds are playing from previous game
+            clearInterval(difficultyChangeInterval);
+            stopAllWhackSounds();
 
-            // Start moles popping
             popUp();
 
-            // Start game timer
             timerId = setInterval(() => {
                 gameTime--;
-                timeDisplay.textContent = Math.floor(gameTime); // Display rounded down time
+                timeDisplay.textContent = Math.floor(gameTime);
 
                 if (gameTime <= 0) {
                     clearInterval(timerId);
-                    clearTimeout(popUpInterval); // Stop any pending pop-ups
-                    clearInterval(difficultyChangeInterval); // Stop difficulty changes
+                    clearTimeout(popUpInterval);
+                    clearInterval(difficultyChangeInterval);
                     gameActive = false;
                     startButton.disabled = false;
-                    document.body.style.cursor = 'default'; // Show default cursor when game ends
-                    crosshair.style.display = 'none'; // Hide crosshair when game ends
+                    document.body.style.cursor = 'default';
+                    crosshair.style.display = 'none';
 
-                    stopAllWhackSounds(); // Stop all whack sounds on game over
-                    // Play game over sound
-                    gameOverSound.currentTime = 0; // Rewind to start
+                    stopAllWhackSounds();
+                    gameOverSound.currentTime = 0;
                     gameOverSound.play().catch(e => console.error("Error playing game over sound:", e));
 
-                    // Display game over message and prompt for score submission
                     showGameOverModal(score);
 
-                    // Reset all moles to hidden state
                     holes.forEach(hole => {
                         hole.querySelector('.mole-img').classList.remove('popping');
                         hole.classList.remove('active');
                     });
 
-                    // If there was an image loading error, show debug button again after game over
                     if (imageLoadError) {
                         debugButton.classList.remove('hidden');
                     }
                 }
             }, 1000);
 
-            // Start random difficulty changes every 10-20 seconds
-            // Note: For a truly random interval for difficulty changes, you would set a timeout within a function,
-            // and that function would call itself with a new random timeout after each difficulty change.
-            // For simplicity here, we'll keep the interval fixed but use randomTime to get the duration.
-            // To achieve random intervals for difficulty change, you would do something like this:
-            // function scheduleDifficultyChange() {
-            //     if (!gameActive) return;
-            //     changeDifficulty();
-            //     const nextChangeTime = Math.random() * (20000 - 10000) + 10000; // 10 to 20 seconds
-            //     difficultyChangeInterval = setTimeout(scheduleDifficultyChange, nextChangeTime);
-            // }
-            // scheduleDifficultyChange(); // Call it once to start the chain
-            // For now, retaining the simpler setInterval which uses a fixed interval determined by randomTime once.
-            difficultyChangeInterval = setInterval(changeDifficulty, 15000); // Changed to a fixed but reasonable interval
+            difficultyChangeInterval = setInterval(changeDifficulty, 15000);
         }
 
         // Custom message box function (instead of alert)
         function displayMessage(message, isGameOver = false) {
             const existingMessage = document.getElementById('gameMessage');
-            if (existingMessage) existingMessage.remove(); // Remove previous message
+            if (existingMessage) existingMessage.remove();
 
             const messageDiv = document.createElement('div');
             messageDiv.id = 'gameMessage';
             messageDiv.classList.add(
                 'fixed', 'inset-0', 'flex', 'items-center', 'justify-center', 'bg-black', 'bg-opacity-75', 'z-50',
-                'p-4' // Padding for mobile
+                'p-4'
             );
 
             const contentDiv = document.createElement('div');
             contentDiv.classList.add(
-                'bg-gray-800', 'p-8', 'rounded-lg', 'shadow-2xl', 'text-center', 'max-w-md', 'w-full', // Responsive width
-                'border-4', 'border-yellow-400', 'transform', 'scale-0', 'opacity-0', 'transition-all', 'duration-300' // Initial hidden state with transform
+                'bg-gray-800', 'p-8', 'rounded-lg', 'shadow-2xl', 'text-center', 'max-w-md', 'w-full',
+                'border-4', 'border-yellow-400', 'transform', 'scale-0', 'opacity-0', 'transition-all', 'duration-300'
             );
 
             const messageText = document.createElement('p');
@@ -677,13 +642,12 @@
             );
             closeButton.textContent = 'OK';
             closeButton.addEventListener('click', () => {
-                // Animate out before removing
                 contentDiv.classList.remove('scale-100', 'opacity-100');
-                contentDiv.classList.add('scale-0', 'opacity-0', 'translate-y-5'); // Animate out by scaling down, fading, and moving slightly down
-                messageDiv.classList.add('pointer-events-none'); // Prevent clicks during fade out
+                contentDiv.classList.add('scale-0', 'opacity-0', 'translate-y-5');
+                messageDiv.classList.add('pointer-events-none');
                 setTimeout(() => {
                     messageDiv.remove();
-                }, 300); // Remove after transition
+                }, 300);
             });
 
             contentDiv.appendChild(messageText);
@@ -691,21 +655,17 @@
             messageDiv.appendChild(contentDiv);
             document.body.appendChild(messageDiv);
 
-            // Animate in
             setTimeout(() => {
                 contentDiv.classList.remove('scale-0', 'opacity-0');
-                // The CSS defines the target state (translateY(0) scale(1) opacity(1)), so just removing these classes will trigger the transition
             }, 50);
         }
 
         // Show Game Over Modal and enable score submission
         function showGameOverModal(finalScore) {
             gameOverMessage.textContent = `Game Over! Your score: ${finalScore}`;
-            usernameInput.value = ''; // Clear previous input
+            usernameInput.value = '';
             gameOverModal.classList.remove('hidden');
-            // Animate in
             setTimeout(() => {
-                // The CSS handles the transition from scale-0, opacity-0 to normal state
                 gameOverModal.querySelector('div').classList.remove('scale-0', 'opacity-0');
             }, 50);
         }
@@ -714,12 +674,11 @@
         submitScoreButton.addEventListener('click', () => {
             const username = usernameInput.value.trim();
             if (username.length > 0) {
-                // Use a unique ID for each score entry, combining timestamp and username to prevent clashes
-                const scoreId = `${Date.now()}_${username.replace(/\s/g, '_')}`; // Sanitize username for key
+                const scoreId = `${Date.now()}_${username.replace(/\s/g, '_')}`;
                 const scoreData = {
                     username: username,
                     score: score,
-                    timestamp: Date.now() // Store timestamp for eventual sorting if needed, though GUN's map doesn't sort
+                    timestamp: Date.now()
                 };
 
                 highScoresRef.get(scoreId).put(scoreData, (ack) => {
@@ -729,14 +688,12 @@
                     } else {
                         console.log('Score submitted successfully! ACK:', ack);
                         displayMessage('Score submitted! Great job!');
-                        // Animate out before hiding
                         gameOverModal.querySelector('div').classList.remove('scale-100', 'opacity-100');
-                        gameOverModal.querySelector('div').classList.add('scale-0', 'opacity-0', 'translate-y-5'); // Animate out
+                        gameOverModal.querySelector('div').classList.add('scale-0', 'opacity-0', 'translate-y-5');
                         setTimeout(() => {
                             gameOverModal.classList.add('hidden');
-                            gameOverModal.querySelector('div').classList.remove('translate-y-5'); // Reset transform for next time
-                        }, 300); // Hide after transition
-                        // updateLeaderboardDisplay() will be called automatically by the map().on listener
+                            gameOverModal.querySelector('div').classList.remove('translate-y-5');
+                        }, 300);
                     }
                 });
             } else {
@@ -747,14 +704,12 @@
         // Function to update the leaderboard display from the scoresCache
         function updateLeaderboardDisplay() {
             console.log('Updating leaderboard display...');
-            const scoresArray = Object.values(scoresCache).filter(s => s && s.username && s.score !== undefined); // Filter out potential nulls or invalid entries
+            const scoresArray = Object.values(scoresCache).filter(s => s && s.username && s.score !== undefined);
             console.log('Scores in cache before sorting:', scoresArray);
 
-            // Filter for unique usernames, keeping the highest score for each
             const uniqueScores = {};
             scoresArray.forEach(entry => {
                 if (uniqueScores[entry.username]) {
-                    // If username exists, update only if current score is higher
                     if (entry.score > uniqueScores[entry.username].score) {
                         uniqueScores[entry.username] = entry;
                     }
@@ -765,13 +720,10 @@
 
             const filteredScoresArray = Object.values(uniqueScores);
 
-            // Sort scores in descending order
             filteredScoresArray.sort((a, b) => b.score - a.score);
 
-            // Clear current list
             leaderboardList.innerHTML = '';
 
-            // Display top 10 scores
             if (filteredScoresArray.length === 0) {
                 leaderboardList.innerHTML = '<p class="text-gray-400 text-center">No scores yet. Be the first!</p>';
             } else {
@@ -793,35 +745,27 @@
         function loadHighScores() {
             console.log('Attempting to load high scores from GUN...');
             highScoresRef.map().on(function(data, key) {
-                // 'data' is the value of the child, 'key' is the child's key
                 console.log(`Received data for key ${key}:`, data);
                 if (data && data.username && data.score !== undefined) {
-                    // Update or add the score to our local cache
                     scoresCache[key] = data;
-                    updateLeaderboardDisplay(); // Re-render the leaderboard with the updated cache
+                    updateLeaderboardDisplay();
                 } else if (data === null) {
-                    // Handle deletion: if data is null, the item was deleted
                     console.log(`Key ${key} was deleted.`);
                     delete scoresCache[key];
-                    updateLeaderboardDisplay(); // Re-render after deletion
+                    updateLeaderboardDisplay();
                 }
             });
-            // Initial call to display any scores already in the cache (or "Loading scores...")
             updateLeaderboardDisplay();
         }
 
-
-        // Event listener for Start button
         startButton.addEventListener('click', startGame);
 
-        // Event listener for Debug button
         debugButton.addEventListener('click', () => {
             if (imageLoadError) {
                 displayMessage(imageLoadErrorMessage, false);
             }
         });
 
-        // Music toggle button logic
         musicToggleButton.addEventListener('click', () => {
             if (bgMusic.paused) {
                 bgMusic.play().then(() => {
@@ -833,63 +777,57 @@
             }
         });
 
-        // Welcome screen logic
         enterGameButton.addEventListener('click', () => {
-            // Animate out welcome screen elements
             welcomeScreen.querySelector('p').classList.add('translate-y-5', 'opacity-0');
             welcomeScreen.querySelector('button').classList.add('translate-y-5', 'opacity-0');
             
             setTimeout(() => {
-                welcomeScreen.classList.add('hidden'); // Hide welcome screen after animation
-            }, 400); // Match CSS transition duration
+                welcomeScreen.classList.add('hidden');
+            }, 400);
 
             bgMusic.play().catch(e => {
                 console.error("Autoplay prevented or other error playing background music:", e);
-                // If autoplay is prevented, user might need to click Play Music button manually
                 musicToggleButton.textContent = 'Play Music (Autoplay blocked)';
             });
         });
 
-
-        // Custom crosshair movement
         document.addEventListener('mousemove', (e) => {
-            if (gameActive) { // Only show/move crosshair if game is active
+            if (gameActive) {
                 crosshair.style.left = `${e.clientX}px`;
                 crosshair.style.top = `${e.clientY}px`;
                 crosshair.style.display = 'block';
             } else {
-                crosshair.style.display = 'none'; // Hide crosshair when game is not active
+                crosshair.style.display = 'none';
             }
         });
 
-        // Hide crosshair if mouse leaves the document
         document.addEventListener('mouseleave', () => {
             crosshair.style.display = 'none';
         });
 
-        // Function to fetch images from images.txt
+        // Function to fetch images from gamepics.txt (UPDATED)
         async function fetchImages() {
-            loadingSpinner.style.display = 'block'; // Show spinner
-            startButton.disabled = true; // Disable button while loading
-            imageLoadError = false; // Reset error flag
-            imageLoadErrorMessage = ''; // Reset error message
+            loadingSpinner.style.display = 'block';
+            startButton.disabled = true;
+            imageLoadError = false;
+            imageLoadErrorMessage = '';
 
             try {
-                const response = await fetch('images.txt');
+                const response = await fetch('gamepics.txt'); // Changed file name to gamepics.txt
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}. Ensure 'images.txt' is present.`);
+                    throw new Error(`HTTP error! status: ${response.status}. Ensure 'gamepics.txt' is present.`);
                 }
                 const text = await response.text();
-                // Split by newline, filter out empty lines, trim whitespace, and filter for .png
+                
+                // Directly use each line as a URL after trimming, filtering for non-empty, and checking for .png
                 const fetchedImages = text.split('\n')
                                         .map(url => url.trim())
                                         .filter(url => url.length > 0 && url.toLowerCase().endsWith('.png'));
 
                 if (fetchedImages.length === 0) {
                     imageLoadError = true;
-                    imageLoadErrorMessage = "images.txt was found, but it contains no valid .png image URLs. Please ensure it has one .png URL per line.";
+                    imageLoadErrorMessage = "gamepics.txt was found, but it contains no valid .png image URLs. Please ensure it has one direct .png URL per line.";
                     console.warn(imageLoadErrorMessage);
-                    // Provide fallback images since no valid URLs were found in the file
                     characterImages = [
                         'https://placehold.co/200x200/4CAF50/ffffff?text=Fallback_A',
                         'https://placehold.co/200x200/FF5733/ffffff?text=Fallback_B',
@@ -901,31 +839,27 @@
                 }
             } catch (error) {
                 imageLoadError = true;
-                imageLoadErrorMessage = `Failed to load images from images.txt: ${error.message}. Using fallback images.`;
+                imageLoadErrorMessage = `Failed to load images from gamepics.txt: ${error.message}. Using fallback images.`;
                 console.error(imageLoadErrorMessage);
-                // Provide fallback images if fetching fails completely
                 characterImages = [
                     'https://placehold.co/200x200/4CAF50/ffffff?text=Fallback_1',
                     'https://placehold.co/200x200/FF5733/ffffff?text=Fallback_2',
                     'https://placehold.co/200x200/33AFFF/ffffff?text=Fallback_3'
                 ];
             } finally {
-                loadingSpinner.style.display = 'none'; // Hide spinner
-                startButton.disabled = false; // Enable button after loading (even if failed, with fallbacks)
+                loadingSpinner.style.display = 'none';
+                startButton.disabled = false;
 
                 if (imageLoadError) {
-                    debugButton.classList.remove('hidden'); // Show debug button only if an error occurred
+                    debugButton.classList.remove('hidden');
                 }
             }
         }
 
-        // Fetch images and load high scores when the window loads
         document.addEventListener('DOMContentLoaded', () => {
             fetchImages();
-            loadHighScores(); // Load and subscribe to high scores on page load
+            loadHighScores();
         });
-
-
     </script>
 </body>
 </html>
