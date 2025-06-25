@@ -255,7 +255,8 @@
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/gun/lib/not.js"></script> </head>
+    <script src="https://cdn.jsdelivr.net/npm/gun/lib/not.js"></script>
+</head>
 <body class="selection:bg-yellow-500 selection:text-white">
     <div id="welcomeScreen" class="welcome-overlay">
         <p class="text-5xl font-bold mb-4 text-yellow-400">WELCOME TO WHACK A TEKKEN GAME</p>
@@ -353,7 +354,9 @@
             medium: { minPopUp: 700, maxPopUp: 1500, minDownTime: 700, maxDownTime: 2000 },
             hard: { minPopUp: 400, maxPopUp: 1000, minDownTime: 400, maxDownTime: 1500 }
         };
-        let currentDifficulty = 'easy'; // Start with easy difficulty
+        // Define an array of difficulties to cycle through (excluding 'easy')
+        const selectableDifficulties = ['medium', 'hard'];
+        let currentDifficulty = selectableDifficulties[Math.floor(Math.random() * selectableDifficulties.length)]; // Start randomly with medium or hard
 
         // Get DOM elements
         const welcomeScreen = document.getElementById('welcomeScreen');
@@ -395,7 +398,7 @@
         const gun = Gun('https://gun-peer.herokuapp.com/gun'); // Using a common public peer for persistence
 
         // Changed the GUN database key as requested
-        const highScoresRef = gun.get('tekkengamescore92999'); // A main key for all scores
+        const highScoresRef = gun.get('tekkengamescore929199'); // A main key for all scores
 
         // Local cache for scores to manage updates and sorting
         const scoresCache = {};
@@ -499,7 +502,10 @@
             score++;
             scoreDisplay.textContent = score;
 
-            
+            // Add 200ms to the timer for each successful whack
+            gameTime += 1.2; // Add 0.2 seconds (200ms)
+            timeDisplay.textContent = Math.floor(gameTime); // Update display, round down for cleaner look
+
             if (Math.random() < 0.4) { 
                 // Stop the previously playing whack sound before playing a new one
                 if (currentWhackSound) {
@@ -524,12 +530,10 @@
         function changeDifficulty() {
             if (!gameActive) return;
 
-            const difficultyLevels = Object.keys(difficulties);
+            // Select a random difficulty from 'medium' and 'hard'
             let newDifficulty = currentDifficulty;
-            // Ensure a different difficulty is chosen, unless there's only one option
-            while (newDifficulty === currentDifficulty && difficultyLevels.length > 1) {
-                const randomIndex = Math.floor(Math.random() * difficultyLevels.length);
-                newDifficulty = difficultyLevels[randomIndex];
+            while (newDifficulty === currentDifficulty) { // Ensure a different difficulty is chosen
+                newDifficulty = selectableDifficulties[Math.floor(Math.random() * selectableDifficulties.length)];
             }
             currentDifficulty = newDifficulty;
             console.log("Difficulty changed to:", currentDifficulty);
@@ -552,7 +556,7 @@
         function startGame() {
             score = 0;
             gameTime = 20; // Reset time to 20 seconds
-            currentDifficulty = 'easy'; // Reset to easy at start
+            currentDifficulty = selectableDifficulties[Math.floor(Math.random() * selectableDifficulties.length)]; // Start randomly with medium or hard
             scoreDisplay.textContent = score;
             timeDisplay.textContent = gameTime;
             gameActive = true;
@@ -576,7 +580,7 @@
             // Start game timer
             timerId = setInterval(() => {
                 gameTime--;
-                timeDisplay.textContent = gameTime;
+                timeDisplay.textContent = Math.floor(gameTime); // Display rounded down time
 
                 if (gameTime <= 0) {
                     clearInterval(timerId);
@@ -726,17 +730,32 @@
             const scoresArray = Object.values(scoresCache).filter(s => s && s.username && s.score !== undefined); // Filter out potential nulls or invalid entries
             console.log('Scores in cache before sorting:', scoresArray);
 
+            // Filter for unique usernames, keeping the highest score for each
+            const uniqueScores = {};
+            scoresArray.forEach(entry => {
+                if (uniqueScores[entry.username]) {
+                    // If username exists, update only if current score is higher
+                    if (entry.score > uniqueScores[entry.username].score) {
+                        uniqueScores[entry.username] = entry;
+                    }
+                } else {
+                    uniqueScores[entry.username] = entry;
+                }
+            });
+
+            const filteredScoresArray = Object.values(uniqueScores);
+
             // Sort scores in descending order
-            scoresArray.sort((a, b) => b.score - a.score);
+            filteredScoresArray.sort((a, b) => b.score - a.score);
 
             // Clear current list
             leaderboardList.innerHTML = '';
 
             // Display top 10 scores
-            if (scoresArray.length === 0) {
+            if (filteredScoresArray.length === 0) {
                 leaderboardList.innerHTML = '<p class="text-gray-400 text-center">No scores yet. Be the first!</p>';
             } else {
-                scoresArray.slice(0, 10).forEach((entry, index) => {
+                filteredScoresArray.slice(0, 10).forEach((entry, index) => {
                     const scoreItem = document.createElement('div');
                     scoreItem.classList.add('flex', 'justify-between', 'items-center', 'p-3', 'bg-gray-700', 'rounded-md', 'shadow-sm', 'text-lg', 'font-medium');
                     scoreItem.innerHTML = `
@@ -841,12 +860,14 @@
                     throw new Error(`HTTP error! status: ${response.status}. Ensure 'images.txt' is present.`);
                 }
                 const text = await response.text();
-                // Split by newline, filter out empty lines, and trim whitespace
-                const fetchedImages = text.split('\n').map(url => url.trim()).filter(url => url.length > 0);
+                // Split by newline, filter out empty lines, trim whitespace, and filter for .png
+                const fetchedImages = text.split('\n')
+                                        .map(url => url.trim())
+                                        .filter(url => url.length > 0 && url.toLowerCase().endsWith('.png'));
 
                 if (fetchedImages.length === 0) {
                     imageLoadError = true;
-                    imageLoadErrorMessage = "images.txt was found, but it contains no valid image URLs. Please ensure it has one URL per line.";
+                    imageLoadErrorMessage = "images.txt was found, but it contains no valid .png image URLs. Please ensure it has one .png URL per line.";
                     console.warn(imageLoadErrorMessage);
                     // Provide fallback images since no valid URLs were found in the file
                     characterImages = [
