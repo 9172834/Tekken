@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whack A TEKKEN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background for game theme */
+            color: #e2e8f0; /* Light text color */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Hide scrollbars if custom cursor goes off */
+            cursor: default; /* Default cursor for body initially */
+        }
+
+        .main-layout {
+            display: flex;
+            gap: 2rem; /* Space between game and leaderboard */
+            padding: 1.5rem;
+            max-width: 95%; /* Responsive max width for the whole layout */
+            width: 100%; /* Ensure it takes full width when needed */
+            justify-content: center; /* Center content horizontally */
+            align-items: flex-start; /* Align items to the top */
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem; /* Space between game elements */
+            padding: 1.5rem;
+            background-color: #2d3748; /* Slightly lighter dark background for the container */
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 100%; /* Full width within main-layout */
+            max-width: 600px; /* Max width for the game board */
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem; /* Space between holes */
+            background-color: #4a5568; /* Board background */
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+            width: 100%; /* Full width within container */
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hole {
+            background-color: #2d3748; /* Hole background */
+            border-radius: 50%; /* Circular hole */
+            width: 100px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end; /* Align image to bottom of hole when hidden */
+            overflow: hidden; /* Hide parts of image outside the hole */
+            position: relative;
+            cursor: pointer;
+            border: 3px solid #718096; /* Border for holes */
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.15);
+            transition: border-color 0.2s ease-in-out;
+            margin: auto; /* Center holes in grid cells */
+        }
+
+        .hole.active {
+            border-color: #fcbf49; /* Highlight active hole */
+        }
+
+        .mole-img {
+            width: 100%; /* Image fills the width of the hole */
+            height: auto;
+            transform: translateY(100%); /* Start completely hidden below the hole */
+            transition: transform 0.2s ease-out; /* Smooth pop-up/down animation */
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            cursor: none; /* Image itself shouldn't show cursor, handled by crosshair */
+            pointer-events: none; /* Prevent clicks on image when it's just 'popping' */
+            border-radius: 50%; /* Make image circular to fit hole better */
+            object-fit: cover; /* Cover the hole area */
+        }
+
+        .mole-img.popping {
+            transform: translateY(0%); /* Pop up fully visible */
+            pointer-events: auto; /* Allow clicks when popped up */
+        }
+
+        .crosshair {
+            position: absolute;
+            width: 32px; /* Size of the crosshair */
+            height: 32px;
+            background-image: url('https://placehold.co/32x32/ff0000/ffffff?text=+'); /* Placeholder: Red crosshair */
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            transform: translate(-50%, -50%); /* Center the crosshair on mouse pointer */
+            pointer-events: none; /* Allow clicks to pass through to elements below */
+            z-index: 1000; /* Ensure it's on top */
+            display: none; /* Hidden by default */
+        }
+
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 1024px) { /* Adjust breakpoint for leaderboard */
+            .main-layout {
+                flex-direction: column; /* Stack game and leaderboard vertically */
+                align-items: center; /* Center items when stacked */
+            }
+            .leaderboard-container {
+                margin-top: 2rem; /* Add space when stacked */
+                width: 100%; /* Full width when stacked */
+                max-width: 400px; /* Max width for leaderboard */
+            }
+        }
+
+        @media (max-width: 640px) {
+            .hole {
+                width: 80px;
+                height: 80px;
+            }
+            .game-board {
+                grid-template-columns: repeat(2, 1fr); /* 2 columns on small screens */
+                padding: 1rem;
+            }
+            .game-container {
+                padding: 1rem;
+            }
+            h1 {
+                font-size: 2rem; /* Smaller title on mobile */
+            }
+            .main-layout {
+                padding: 1rem;
+            }
+        }
+
+        /* Loading Spinner */
+        .loader {
+            border: 8px solid #f3f3f3; /* Light grey */
+            border-top: 8px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 2s linear infinite;
+            display: none; /* Hidden by default */
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Welcome Screen Overlay */
+        .welcome-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4); /* Softer, more transparent black */
+            backdrop-filter: blur(5px); /* Add a blur effect to the background */
+            -webkit-backdrop-filter: blur(5px); /* For Safari support */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            color: white;
+            font-size: 2rem;
+            text-align: center;
+        }
+
+        .welcome-overlay button {
+            margin-top: 1.5rem;
+            padding: 1rem 2rem;
+            font-size: 1.5rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .welcome-overlay button:hover {
+            background-color: #45a049;
+        }
+
+        /* Custom Styles for Buttons to ensure colors are applied */
+        .btn-start {
+            background: linear-gradient(to right, #22C55E, #16A34A) !important; /* Tailwind green-500 to green-700 */
+        }
+        .btn-start:hover {
+            background: linear-gradient(to right, #16A34A, #15803D) !important; /* Darker green on hover */
+        }
+
+        .btn-music {
+            background: linear-gradient(to right, #A855F7, #7E22CE) !important; /* Tailwind purple-500 to purple-700 */
+        }
+        .btn-music:hover {
+            background: linear-gradient(to right, #7E22CE, #6B21A8) !important; /* Darker purple on hover */
+        }
+
+        .btn-debug {
+            background: linear-gradient(to right, #EF4444, #DC2626) !important; /* Tailwind red-500 to red-700 */
+        }
+        .btn-debug:hover {
+            background: linear-gradient(to right, #DC2626, #B91C1C) !important; /* Darker red on hover */
+        }
+
+        .btn-submit {
+            background: linear-gradient(to right, #3B82F6, #2563EB) !important; /* Tailwind blue-500 to blue-700 */
+        }
+        .btn-submit:hover {
+            background: linear-gradient(to right, #2563EB, #1D4ED8) !important; /* Darker blue on hover */
+        }
+
+        /* Styles for general modal overlay (Game Over, displayMessage) */
+        .fixed.inset-0.flex.items-center.justify-center.bg-black.bg-opacity-75.z-50.p-4 {
+            background-color: rgba(0, 0, 0, 0.4); /* Softer, more transparent black */
+            backdrop-filter: blur(5px); /* Add a blur effect to the background */
+            -webkit-backdrop-filter: blur(5px); /* For Safari support */
+        }
+
+        /* Base style for modal content (hidden state, for both gameOverModal and displayMessage) */
+        .fixed.inset-0.flex.items-center.justify-center.bg-black.bg-opacity-75.z-50.p-4 > div {
+            transform: translateY(20px) scale(0.95) opacity(0); /* Start slightly down, smaller, and invisible */
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); /* Smoother transition */
+        }
+
+        /* Visible state for modal content (when 'hidden' class is removed from parent) */
+        .fixed.inset-0.flex.items-center.justify-center.bg-black.bg-opacity-75.z-50.p-4:not(.hidden) > div {
+            transform: translateY(0) scale(1) opacity(1); /* End at original position, size, and fully visible */
+        }
+
+        /* Override initial transform for welcomeScreen so it fades out */
+        #welcomeScreen.welcome-overlay > p,
+        #welcomeScreen.welcome-overlay > button {
+             transform: translateY(0) scale(1) opacity(1); /* Ensure welcome screen elements start visible */
+             transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); /* Add transition for fade out */
+        }
+
+        #welcomeScreen.hidden > p,
+        #welcomeScreen.hidden > button {
+             transform: translateY(-20px) scale(0.95) opacity(0); /* Animate out to slightly up and fade */
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gun/lib/not.js"></script> </head>
+<body class="selection:bg-yellow-500 selection:text-white">
+    <div id="welcomeScreen" class="welcome-overlay">
+        <p class="text-5xl font-bold mb-4 text-yellow-400">WELCOME TO WHACK A TEKKEN GAME</p>
+        <button id="enterGameButton" class="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg">ENTER</button>
+    </div>
+
+    <div class="main-layout">
+        <div class="game-container">
+            <h1 class="text-4xl sm:text-5xl font-bold text-center mb-4 text-yellow-400">Whack A TEKKEN</h1>
+
+            <div class="flex justify-between items-center w-full max-w-md mx-auto mb-4 p-3 bg-gray-700 rounded-lg shadow-md">
+                <div class="text-xl font-semibold">Score: <span id="score">0</span></div>
+                <div class="text-xl font-semibold">Time: <span id="time">20</span>s</div>
+            </div>
+
+            <div id="gameBoard" class="game-board">
+            </div>
+
+            <div id="loadingSpinner" class="loader"></div>
+            <div class="flex flex-col items-center gap-4">
+                <button id="startButton" class="px-6 py-3 text-white font-bold rounded-lg shadow-lg transform transition-transform duration-200 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75 btn-start" disabled>
+                    Start Game
+                </button>
+                <button id="musicToggleButton" class="px-4 py-2 text-white font-bold rounded-lg shadow-lg transform transition-transform duration-200 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-opacity-75 btn-music">
+                    Pause Music
+                </button>
+                <button id="debugButton" class="px-4 py-2 text-white font-bold rounded-lg shadow-lg transform transition-transform duration-200 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75 hidden btn-debug">
+                    Debug Info
+                </button>
+            </div>
+
+            <div id="crosshair" class="crosshair"></div>
+        </div>
+
+        <div class="leaderboard-container w-full max-w-sm bg-gray-800 p-6 rounded-lg shadow-xl border-2 border-yellow-500">
+            <h2 class="text-3xl font-bold text-center mb-6 text-yellow-400">Top 10 Scores</h2>
+            <div id="leaderboardList" class="space-y-3">
+                <p class="text-gray-400 text-center">Loading scores...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="gameOverModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50 p-4 hidden">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-2xl text-center max-w-md w-full border-4 border-yellow-400 transform scale-0 opacity-0 transition-all duration-300">
+            <p id="gameOverMessage" class="text-3xl font-bold mb-6 text-yellow-300">Game Over! Your score: 0</p>
+            <input type="text" id="usernameInput" placeholder="Enter your username" class="w-full p-3 mb-4 rounded-md bg-gray-700 text-white placeholder-gray-400 border border-gray-600 focus:outline-none focus:border-blue-500" maxlength="15">
+            <button id="submitScoreButton" class="px-6 py-2 text-white font-semibold rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 btn-submit">
+                Submit Score
+            </button>
+        </div>
+    </div>
+
+    <audio id="bgMusic" loop>
+        <source src="https://files.catbox.moe/valb5m.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <audio id="startGameSound">
+        <source src="https://files.catbox.moe/ivbv3w.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <audio id="gameOverSound">
+        <source src="https://files.catbox.moe/dw19ko.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <audio id="whackSound2">
+        <source src="https://files.catbox.moe/y0guks.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <audio id="whackSound3">
+        <source src="https://files.catbox.moe/kuwo37.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+
+    <script type="module">
+        // Game state variables
+        let score = 0;
+        let gameTime = 20; // seconds - Changed from 60 to 20
+        let timerId;
+        let popUpInterval;
+        let difficultyChangeInterval; // New interval for changing difficulty
+        let gameActive = false;
+        const holes = [];
+        let lastHole = null; // To ensure a new hole is chosen
+        let lastImageIndex = null; // To ensure a new image is chosen
+        let imageLoadErrorMessage = ''; // Store error message for debug button
+        let imageLoadError = false; // Flag to indicate if image loading failed
+
+        let characterImages = []; // This will now be populated from images.txt
+        let currentWhackSound = null; // New variable to keep track of the currently playing whack sound
+
+        // Difficulty settings
+        const difficulties = {
+            easy: { minPopUp: 1000, maxPopUp: 2000, minDownTime: 1000, maxDownTime: 3000 },
+            medium: { minPopUp: 700, maxPopUp: 1500, minDownTime: 700, maxDownTime: 2000 },
+            hard: { minPopUp: 400, maxPopUp: 1000, minDownTime: 400, maxDownTime: 1500 }
+        };
+        let currentDifficulty = 'easy'; // Start with easy difficulty
+
+        // Get DOM elements
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const enterGameButton = document.getElementById('enterGameButton');
+        const scoreDisplay = document.getElementById('score');
+        const timeDisplay = document.getElementById('time');
+        const startButton = document.getElementById('startButton');
+        const musicToggleButton = document.getElementById('musicToggleButton');
+        const debugButton = document.getElementById('debugButton');
+        const gameBoard = document.getElementById('gameBoard');
+        const crosshair = document.getElementById('crosshair');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+
+        // Modals and related elements
+        const gameOverModal = document.getElementById('gameOverModal');
+        const gameOverMessage = document.getElementById('gameOverMessage');
+        const usernameInput = document.getElementById('usernameInput');
+        const submitScoreButton = document.getElementById('submitScoreButton');
+        const leaderboardList = document.getElementById('leaderboardList');
+
+        // Audio elements
+        const bgMusic = document.getElementById('bgMusic');
+        const startGameSound = document.getElementById('startGameSound');
+        const gameOverSound = document.getElementById('gameOverSound');
+        const whackSounds = [
+            document.getElementById('whackSound2'), // Removed whackSound1
+            document.getElementById('whackSound3')  //
+        ];
+
+        // Set initial volumes
+        bgMusic.volume = 0.1;
+        startGameSound.volume = 0.8;
+        gameOverSound.volume = 0.8;
+        whackSounds.forEach(sound => sound.volume = 0.6); // Slightly lower volume for whack sounds
+
+        // Initialize GUN database
+        // IMPORTANT: Using a public peer is crucial for persistence across refreshes and sharing scores.
+        // If this line is commented out or an unreliable peer is used, scores will not persist.
+        const gun = Gun('https://gun-peer.herokuapp.com/gun'); // Using a common public peer for persistence
+
+        // Changed the GUN database key as requested
+        const highScoresRef = gun.get('tekkengamescore92999'); // A main key for all scores
+
+        // Local cache for scores to manage updates and sorting
+        const scoresCache = {};
+
+        // Function to create holes dynamically
+        function createHoles(numHoles) {
+            for (let i = 0; i < numHoles; i++) {
+                const holeDiv = document.createElement('div');
+                holeDiv.classList.add('hole');
+                holeDiv.dataset.id = i; // Assign a unique ID to each hole
+
+                const moleImg = document.createElement('img');
+                moleImg.classList.add('mole-img');
+                moleImg.alt = 'TEKKEN Character';
+                // Add an error fallback for images
+                moleImg.onerror = function() {
+                    this.src = 'https://placehold.co/200x200/AAAAAA/FFFFFF?text=Error'; // Generic error placeholder
+                    console.error('Failed to load image:', this.src);
+                };
+                holeDiv.appendChild(moleImg);
+                gameBoard.appendChild(holeDiv);
+                holes.push(holeDiv);
+
+                // Add click listener to the hole (which contains the image)
+                holeDiv.addEventListener('click', whack);
+            }
+        }
+
+        // Initialize holes
+        createHoles(9); // Create 9 holes (3x3 grid)
+
+        // Function to get a random time based on current difficulty
+        function randomTime(type) { // 'type' can be 'popUp' or 'downTime'
+            const config = difficulties[currentDifficulty];
+            if (type === 'popUp') {
+                return Math.round(Math.random() * (config.maxPopUp - config.minPopUp) + config.minPopUp);
+            } else if (type === 'downTime') {
+                return Math.round(Math.random() * (config.maxDownTime - config.minDownTime) + config.minDownTime);
+            }
+            return 1000; // Default if type is not recognized
+        }
+
+        // Function to get a random hole that is not the last one
+        function randomHole(holesArray) {
+            const idx = Math.floor(Math.random() * holesArray.length);
+            const hole = holesArray[idx];
+            if (hole === lastHole) {
+                return randomHole(holesArray); // Recurse if it's the same hole
+            }
+            lastHole = hole;
+            return hole;
+        }
+
+        // Function to get a random image that is not the last one
+        function randomImage(imagesArray) {
+            if (imagesArray.length === 0) {
+                console.warn('No images loaded. Using a placeholder.');
+                return 'https://placehold.co/200x200/FF0000/FFFFFF?text=NO_IMAGE';
+            }
+            const idx = Math.floor(Math.random() * imagesArray.length);
+            if (idx === lastImageIndex && imagesArray.length > 1) { // Only recurse if there's more than one image
+                return randomImage(imagesArray);
+            }
+            lastImageIndex = idx;
+            return imagesArray[idx];
+        }
+
+        // Function to make a mole pop up
+        function popUp() {
+            if (!gameActive) return; // Stop if game is not active
+            if (characterImages.length === 0) {
+                console.error("No character images available to pop up. This should ideally not happen if fallbacks are working.");
+                return;
+            }
+
+            const popTime = randomTime('popUp'); // How long the mole stays up
+            const downTime = randomTime('downTime'); // How long before next pop-up
+
+            const hole = randomHole(holes);
+            const imgElement = hole.querySelector('.mole-img');
+            const imageUrl = randomImage(characterImages);
+
+            imgElement.src = imageUrl; // Set the image source
+            hole.classList.add('active'); // Highlight the hole
+            imgElement.classList.add('popping'); // Make image visible
+
+            // Set a timeout for the mole to go back down
+            setTimeout(() => {
+                imgElement.classList.remove('popping');
+                hole.classList.remove('active');
+                if (gameActive) { // If game is still active, schedule next popUp
+                    popUpInterval = setTimeout(popUp, downTime);
+                }
+            }, popTime);
+        }
+
+        // Function to handle a whack
+        function whack(e) {
+            if (!gameActive || !e.target.classList.contains('mole-img')) return; // Only if game is active and clicked on the image
+
+            score++;
+            scoreDisplay.textContent = score;
+
+            
+            if (Math.random() < 0.4) { 
+                // Stop the previously playing whack sound before playing a new one
+                if (currentWhackSound) {
+                    currentWhackSound.pause();
+                    currentWhackSound.currentTime = 0;
+                }
+
+                // Play random whack sound
+                const randomWhackSound = whackSounds[Math.floor(Math.random() * whackSounds.length)];
+                randomWhackSound.currentTime = 0; // Rewind to start
+                randomWhackSound.play().catch(e => console.error("Error playing whack sound:", e));
+                currentWhackSound = randomWhackSound; // Store the currently playing sound
+            }
+
+
+            // Immediately hide the whacked mole
+            e.target.classList.remove('popping');
+            e.target.parentElement.classList.remove('active'); // Remove active from hole too
+        }
+
+        // Function to randomly change difficulty
+        function changeDifficulty() {
+            if (!gameActive) return;
+
+            const difficultyLevels = Object.keys(difficulties);
+            let newDifficulty = currentDifficulty;
+            // Ensure a different difficulty is chosen, unless there's only one option
+            while (newDifficulty === currentDifficulty && difficultyLevels.length > 1) {
+                const randomIndex = Math.floor(Math.random() * difficultyLevels.length);
+                newDifficulty = difficultyLevels[randomIndex];
+            }
+            currentDifficulty = newDifficulty;
+            console.log("Difficulty changed to:", currentDifficulty);
+
+            // Reschedule pop-up to immediately reflect new difficulty if desired
+            clearTimeout(popUpInterval);
+            popUpInterval = setTimeout(popUp, randomTime('downTime'));
+        }
+
+        // Function to stop all whack sounds
+        function stopAllWhackSounds() {
+            whackSounds.forEach(sound => {
+                sound.pause();
+                sound.currentTime = 0;
+            });
+            currentWhackSound = null; // Clear the current whack sound reference
+        }
+
+        // Function to start the game
+        function startGame() {
+            score = 0;
+            gameTime = 20; // Reset time to 20 seconds
+            currentDifficulty = 'easy'; // Reset to easy at start
+            scoreDisplay.textContent = score;
+            timeDisplay.textContent = gameTime;
+            gameActive = true;
+            startButton.disabled = true; // Disable start button during game
+            document.body.style.cursor = 'none'; // Hide default cursor when game starts
+            debugButton.classList.add('hidden'); // Hide debug button if game starts successfully
+
+            // Play start game sound
+            startGameSound.currentTime = 0; // Rewind to start
+            startGameSound.play().catch(e => console.error("Error playing start game sound:", e));
+
+            // Clear any existing intervals
+            clearTimeout(timerId);
+            clearTimeout(popUpInterval);
+            clearInterval(difficultyChangeInterval); // Clear old difficulty interval
+            stopAllWhackSounds(); // Ensure no whack sounds are playing from previous game
+
+            // Start moles popping
+            popUp();
+
+            // Start game timer
+            timerId = setInterval(() => {
+                gameTime--;
+                timeDisplay.textContent = gameTime;
+
+                if (gameTime <= 0) {
+                    clearInterval(timerId);
+                    clearTimeout(popUpInterval); // Stop any pending pop-ups
+                    clearInterval(difficultyChangeInterval); // Stop difficulty changes
+                    gameActive = false;
+                    startButton.disabled = false;
+                    document.body.style.cursor = 'default'; // Show default cursor when game ends
+                    crosshair.style.display = 'none'; // Hide crosshair when game ends
+
+                    stopAllWhackSounds(); // Stop all whack sounds on game over
+                    // Play game over sound
+                    gameOverSound.currentTime = 0; // Rewind to start
+                    gameOverSound.play().catch(e => console.error("Error playing game over sound:", e));
+
+                    // Display game over message and prompt for score submission
+                    showGameOverModal(score);
+
+                    // Reset all moles to hidden state
+                    holes.forEach(hole => {
+                        hole.querySelector('.mole-img').classList.remove('popping');
+                        hole.classList.remove('active');
+                    });
+
+                    // If there was an image loading error, show debug button again after game over
+                    if (imageLoadError) {
+                        debugButton.classList.remove('hidden');
+                    }
+                }
+            }, 1000);
+
+            // Start random difficulty changes every 10-20 seconds
+            // Note: For a truly random interval for difficulty changes, you would set a timeout within a function,
+            // and that function would call itself with a new random timeout after each difficulty change.
+            // For simplicity here, we'll keep the interval fixed but use randomTime to get the duration.
+            // To achieve random intervals for difficulty change, you would do something like this:
+            // function scheduleDifficultyChange() {
+            //     if (!gameActive) return;
+            //     changeDifficulty();
+            //     const nextChangeTime = Math.random() * (20000 - 10000) + 10000; // 10 to 20 seconds
+            //     difficultyChangeInterval = setTimeout(scheduleDifficultyChange, nextChangeTime);
+            // }
+            // scheduleDifficultyChange(); // Call it once to start the chain
+            // For now, retaining the simpler setInterval which uses a fixed interval determined by randomTime once.
+            difficultyChangeInterval = setInterval(changeDifficulty, 15000); // Changed to a fixed but reasonable interval
+        }
+
+        // Custom message box function (instead of alert)
+        function displayMessage(message, isGameOver = false) {
+            const existingMessage = document.getElementById('gameMessage');
+            if (existingMessage) existingMessage.remove(); // Remove previous message
+
+            const messageDiv = document.createElement('div');
+            messageDiv.id = 'gameMessage';
+            messageDiv.classList.add(
+                'fixed', 'inset-0', 'flex', 'items-center', 'justify-center', 'bg-black', 'bg-opacity-75', 'z-50',
+                'p-4' // Padding for mobile
+            );
+
+            const contentDiv = document.createElement('div');
+            contentDiv.classList.add(
+                'bg-gray-800', 'p-8', 'rounded-lg', 'shadow-2xl', 'text-center', 'max-w-md', 'w-full', // Responsive width
+                'border-4', 'border-yellow-400', 'transform', 'scale-0', 'opacity-0', 'transition-all', 'duration-300' // Initial hidden state with transform
+            );
+
+            const messageText = document.createElement('p');
+            messageText.classList.add('text-3xl', 'font-bold', 'mb-6', isGameOver ? 'text-yellow-300' : 'text-blue-300');
+            messageText.textContent = message;
+
+            const closeButton = document.createElement('button');
+            closeButton.classList.add(
+                'px-6', 'py-2', 'bg-blue-600', 'hover:bg-blue-700', 'text-white', 'font-semibold', 'rounded-lg',
+                'transition-colors', 'duration-200', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-400'
+            );
+            closeButton.textContent = 'OK';
+            closeButton.addEventListener('click', () => {
+                // Animate out before removing
+                contentDiv.classList.remove('scale-100', 'opacity-100');
+                contentDiv.classList.add('scale-0', 'opacity-0', 'translate-y-5'); // Animate out by scaling down, fading, and moving slightly down
+                messageDiv.classList.add('pointer-events-none'); // Prevent clicks during fade out
+                setTimeout(() => {
+                    messageDiv.remove();
+                }, 300); // Remove after transition
+            });
+
+            contentDiv.appendChild(messageText);
+            contentDiv.appendChild(closeButton);
+            messageDiv.appendChild(contentDiv);
+            document.body.appendChild(messageDiv);
+
+            // Animate in
+            setTimeout(() => {
+                contentDiv.classList.remove('scale-0', 'opacity-0');
+                // The CSS defines the target state (translateY(0) scale(1) opacity(1)), so just removing these classes will trigger the transition
+            }, 50);
+        }
+
+        // Show Game Over Modal and enable score submission
+        function showGameOverModal(finalScore) {
+            gameOverMessage.textContent = `Game Over! Your score: ${finalScore}`;
+            usernameInput.value = ''; // Clear previous input
+            gameOverModal.classList.remove('hidden');
+            // Animate in
+            setTimeout(() => {
+                // The CSS handles the transition from scale-0, opacity-0 to normal state
+                gameOverModal.querySelector('div').classList.remove('scale-0', 'opacity-0');
+            }, 50);
+        }
+
+        // Submit score to GUN database
+        submitScoreButton.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            if (username.length > 0) {
+                // Use a unique ID for each score entry, combining timestamp and username to prevent clashes
+                const scoreId = `${Date.now()}_${username.replace(/\s/g, '_')}`; // Sanitize username for key
+                const scoreData = {
+                    username: username,
+                    score: score,
+                    timestamp: Date.now() // Store timestamp for eventual sorting if needed, though GUN's map doesn't sort
+                };
+
+                highScoresRef.get(scoreId).put(scoreData, (ack) => {
+                    if (ack.err) {
+                        console.error('Error submitting score:', ack.err);
+                        displayMessage('Failed to submit score: ' + ack.err);
+                    } else {
+                        console.log('Score submitted successfully! ACK:', ack);
+                        displayMessage('Score submitted! Great job!');
+                        // Animate out before hiding
+                        gameOverModal.querySelector('div').classList.remove('scale-100', 'opacity-100');
+                        gameOverModal.querySelector('div').classList.add('scale-0', 'opacity-0', 'translate-y-5'); // Animate out
+                        setTimeout(() => {
+                            gameOverModal.classList.add('hidden');
+                            gameOverModal.querySelector('div').classList.remove('translate-y-5'); // Reset transform for next time
+                        }, 300); // Hide after transition
+                        // updateLeaderboardDisplay() will be called automatically by the map().on listener
+                    }
+                });
+            } else {
+                displayMessage('Please enter a username to submit your score.');
+            }
+        });
+
+        // Function to update the leaderboard display from the scoresCache
+        function updateLeaderboardDisplay() {
+            console.log('Updating leaderboard display...');
+            const scoresArray = Object.values(scoresCache).filter(s => s && s.username && s.score !== undefined); // Filter out potential nulls or invalid entries
+            console.log('Scores in cache before sorting:', scoresArray);
+
+            // Sort scores in descending order
+            scoresArray.sort((a, b) => b.score - a.score);
+
+            // Clear current list
+            leaderboardList.innerHTML = '';
+
+            // Display top 10 scores
+            if (scoresArray.length === 0) {
+                leaderboardList.innerHTML = '<p class="text-gray-400 text-center">No scores yet. Be the first!</p>';
+            } else {
+                scoresArray.slice(0, 10).forEach((entry, index) => {
+                    const scoreItem = document.createElement('div');
+                    scoreItem.classList.add('flex', 'justify-between', 'items-center', 'p-3', 'bg-gray-700', 'rounded-md', 'shadow-sm', 'text-lg', 'font-medium');
+                    scoreItem.innerHTML = `
+                        <span class="text-yellow-300">${index + 1}.</span>
+                        <span class="text-white flex-grow text-left ml-4">${entry.username}</span>
+                        <span class="text-green-400 font-bold">${entry.score}</span>
+                    `;
+                    leaderboardList.appendChild(scoreItem);
+                });
+                console.log('Leaderboard updated with top scores.');
+            }
+        }
+
+        // Listen for high score updates from GUN
+        function loadHighScores() {
+            console.log('Attempting to load high scores from GUN...');
+            highScoresRef.map().on(function(data, key) {
+                // 'data' is the value of the child, 'key' is the child's key
+                console.log(`Received data for key ${key}:`, data);
+                if (data && data.username && data.score !== undefined) {
+                    // Update or add the score to our local cache
+                    scoresCache[key] = data;
+                    updateLeaderboardDisplay(); // Re-render the leaderboard with the updated cache
+                } else if (data === null) {
+                    // Handle deletion: if data is null, the item was deleted
+                    console.log(`Key ${key} was deleted.`);
+                    delete scoresCache[key];
+                    updateLeaderboardDisplay(); // Re-render after deletion
+                }
+            });
+            // Initial call to display any scores already in the cache (or "Loading scores...")
+            updateLeaderboardDisplay();
+        }
+
+
+        // Event listener for Start button
+        startButton.addEventListener('click', startGame);
+
+        // Event listener for Debug button
+        debugButton.addEventListener('click', () => {
+            if (imageLoadError) {
+                displayMessage(imageLoadErrorMessage, false);
+            }
+        });
+
+        // Music toggle button logic
+        musicToggleButton.addEventListener('click', () => {
+            if (bgMusic.paused) {
+                bgMusic.play().then(() => {
+                    musicToggleButton.textContent = 'Pause Music';
+                }).catch(e => console.error("Error playing music:", e));
+            } else {
+                bgMusic.pause();
+                musicToggleButton.textContent = 'Play Music';
+            }
+        });
+
+        // Welcome screen logic
+        enterGameButton.addEventListener('click', () => {
+            // Animate out welcome screen elements
+            welcomeScreen.querySelector('p').classList.add('translate-y-5', 'opacity-0');
+            welcomeScreen.querySelector('button').classList.add('translate-y-5', 'opacity-0');
+            
+            setTimeout(() => {
+                welcomeScreen.classList.add('hidden'); // Hide welcome screen after animation
+            }, 400); // Match CSS transition duration
+
+            bgMusic.play().catch(e => {
+                console.error("Autoplay prevented or other error playing background music:", e);
+                // If autoplay is prevented, user might need to click Play Music button manually
+                musicToggleButton.textContent = 'Play Music (Autoplay blocked)';
+            });
+        });
+
+
+        // Custom crosshair movement
+        document.addEventListener('mousemove', (e) => {
+            if (gameActive) { // Only show/move crosshair if game is active
+                crosshair.style.left = `${e.clientX}px`;
+                crosshair.style.top = `${e.clientY}px`;
+                crosshair.style.display = 'block';
+            } else {
+                crosshair.style.display = 'none'; // Hide crosshair when game is not active
+            }
+        });
+
+        // Hide crosshair if mouse leaves the document
+        document.addEventListener('mouseleave', () => {
+            crosshair.style.display = 'none';
+        });
+
+        // Function to fetch images from images.txt
+        async function fetchImages() {
+            loadingSpinner.style.display = 'block'; // Show spinner
+            startButton.disabled = true; // Disable button while loading
+            imageLoadError = false; // Reset error flag
+            imageLoadErrorMessage = ''; // Reset error message
+
+            try {
+                const response = await fetch('images.txt');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}. Ensure 'images.txt' is present.`);
+                }
+                const text = await response.text();
+                // Split by newline, filter out empty lines, and trim whitespace
+                const fetchedImages = text.split('\n').map(url => url.trim()).filter(url => url.length > 0);
+
+                if (fetchedImages.length === 0) {
+                    imageLoadError = true;
+                    imageLoadErrorMessage = "images.txt was found, but it contains no valid image URLs. Please ensure it has one URL per line.";
+                    console.warn(imageLoadErrorMessage);
+                    // Provide fallback images since no valid URLs were found in the file
+                    characterImages = [
+                        'https://placehold.co/200x200/4CAF50/ffffff?text=Fallback_A',
+                        'https://placehold.co/200x200/FF5733/ffffff?text=Fallback_B',
+                        'https://placehold.co/200x200/33AFFF/ffffff?text=Fallback_C'
+                    ];
+                } else {
+                    characterImages = fetchedImages;
+                    console.log('Images loaded:', characterImages);
+                }
+            } catch (error) {
+                imageLoadError = true;
+                imageLoadErrorMessage = `Failed to load images from images.txt: ${error.message}. Using fallback images.`;
+                console.error(imageLoadErrorMessage);
+                // Provide fallback images if fetching fails completely
+                characterImages = [
+                    'https://placehold.co/200x200/4CAF50/ffffff?text=Fallback_1',
+                    'https://placehold.co/200x200/FF5733/ffffff?text=Fallback_2',
+                    'https://placehold.co/200x200/33AFFF/ffffff?text=Fallback_3'
+                ];
+            } finally {
+                loadingSpinner.style.display = 'none'; // Hide spinner
+                startButton.disabled = false; // Enable button after loading (even if failed, with fallbacks)
+
+                if (imageLoadError) {
+                    debugButton.classList.remove('hidden'); // Show debug button only if an error occurred
+                }
+            }
+        }
+
+        // Fetch images and load high scores when the window loads
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchImages();
+            loadHighScores(); // Load and subscribe to high scores on page load
+        });
+
+
+    </script>
+</body>
+</html>
