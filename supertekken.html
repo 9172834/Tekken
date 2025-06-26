@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Tekken!</title>
+    <style>
+        /* Global body styling for centering and background */
+        body {
+            margin: 0;
+            overflow: hidden; /* Hide scrollbars to prevent accidental scrolling */
+            display: flex;
+            flex-direction: column; /* Arrange content vertically */
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Ensure body takes full viewport height */
+            background-color: #333; /* Dark background color for the page */
+            font-family: "Inter", sans-serif; /* Use Inter font as per instructions */
+            color: white; /* White text color for UI elements */
+        }
+
+        /* Styling for the game canvas */
+        canvas {
+            background-color: #87CEEB; /* Sky blue background for the game world */
+            display: block; /* Ensures canvas takes up its own line and respects margins */
+            border-radius: 10px; /* Apply rounded corners to the canvas */
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); /* Add a shadow for depth */
+            max-width: 90%; /* Make the canvas responsive, max 90% of parent width */
+            max-height: 90vh; /* Make the canvas responsive, max 90% of viewport height */
+            margin: 20px auto; /* Center the canvas horizontally with some top/bottom margin */
+            border: 2px solid #555; /* Subtle border for the canvas */
+        }
+
+        /* Styling for game information/instruction text */
+        #game-info {
+            background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent black background */
+            padding: 12px 25px; /* Padding inside the info box */
+            border-radius: 8px; /* Rounded corners for the info box */
+            font-size: 1.3em; /* Slightly larger font size */
+            margin-bottom: 15px; /* Space between info and canvas */
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Add shadow for info box */
+        }
+
+        /* Main Menu Styling */
+        #main-menu, #message-box-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8); /* Dark overlay */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100; /* Ensure it's on top of the canvas */
+            color: white;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        #main-menu h1 {
+            font-size: 3em;
+            margin-bottom: 30px;
+        }
+
+        /* Button styling for both Start and Restart */
+        .game-button {
+            padding: 15px 30px;
+            font-size: 1.5em;
+            cursor: pointer;
+            border: none;
+            border-radius: 10px;
+            background-color: #4CAF50; /* Green color */
+            color: white;
+            transition: background-color 0.3s ease, transform 0.1s ease, box-shadow 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .game-button:hover {
+            background-color: #45a049; /* Darker green on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .game-button:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* For restart button specifically, if a different style is desired */
+        #restart-button {
+            background-color: #008CBA; /* Blue color for restart */
+            margin-top: 20px; /* Space from message text */
+        }
+        #restart-button:hover {
+            background-color: #007bb5;
+        }
+    </style>
+</head>
+<body>
+    <!-- Game information and instructions -->
+    <div id="game-info">
+        Use Arrow Keys: Left/Right to Move, Up to Jump! Avoid the Red Enemies!
+    </div>
+    <!-- The game canvas where everything will be drawn -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Main Menu -->
+    <div id="main-menu">
+        <h1>Super Tekken!</h1>
+        <button id="start-button" class="game-button">Start Game</button>
+    </div>
+
+    <!-- Background Music -->
+    <audio id="backgroundMusic" loop>
+        <source src="https://files.catbox.moe/c71ia4.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <!-- Game Over Sound Effect -->
+    <audio id="gameOverSound">
+        <source src="https://files.catbox.moe/ocg7oz.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <!-- Jump Sound Effect -->
+    <audio id="jumpSound">
+        <source src="https://files.catbox.moe/pu735c.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <script>
+        // Get the canvas element and its 2D rendering context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const gameOverSound = document.getElementById('gameOverSound'); // Get the game over sound element
+        const jumpSound = document.getElementById('jumpSound'); // Get the jump sound element
+        const mainMenu = document.getElementById('main-menu');
+        const startButton = document.getElementById('start-button');
+        const gameInfo = document.getElementById('game-info');
+
+        // Set the fixed dimensions of the game canvas
+        canvas.width = 800; // Width of the game viewport
+        canvas.height = 400; // Height of the game viewport
+
+        // Game physics constants
+        const gravity = 0.25; // Slower gravity for a floatier, smoother jump
+        const jumpForce = -12; // Increased jump force for higher jumps
+        const playerSpeed = 4; // Horizontal movement speed of the player (increased for bigger player)
+        const enemySpeed = 1.5; // Movement speed for bad guys
+        const LEVEL_LENGTH = 18000; // Global constant for the total length of the game level
+
+        // World scrolling offset, determines what part of the world is visible
+        let scrollX = 0;
+
+        // Player object definition
+        const player = {
+            // Player's actual position in the larger game world
+            worldX: canvas.width / 4, // Initial starting X position in the world
+            worldY: 0, // Initial Y position in the world (will fall to ground)
+
+            width: 48, // Width of the player character sprite (increased from 32)
+            height: 48, // Height of the player character sprite (increased from 32)
+            dx: 0, // Horizontal velocity of the player (change in worldX)
+            dy: 0, // Vertical velocity of the player (change in worldY)
+
+            isJumping: false, // Flag to track if the player is currently in the ascending phase of a jump
+            onGround: false, // Flag to track if the player is currently touching a platform or the ground
+
+            // Image objects for player's standing and jumping states
+            imageStanding: new Image(),
+            imageJumping: new Image(),
+            currentImage: null, // The image currently being displayed for the player
+
+            /**
+             * Initiates a jump for the player.
+             * A jump is only possible if the player is currently on the ground.
+             */
+            jump() {
+                if (this.onGround) {
+                    this.dy = jumpForce; // Apply an upward force (negative dy)
+                    this.isJumping = true; // Set the jumping flag to true
+                    this.onGround = false; // Player is no longer on the ground
+                    this.currentImage = this.imageJumping; // Change to the jumping sprite immediately on jump
+
+                    // Play jump sound
+                    jumpSound.volume = 0.6; // 60% volume
+                    jumpSound.currentTime = 0; // Rewind to start for quick repeated jumps
+                    jumpSound.play().catch(e => console.error("Jump audio play failed:", e));
+                }
+            },
+
+            /**
+             * Updates the player's velocities based on game physics.
+             * Positional updates and collision resolution are handled in the gameLoop.
+             */
+            update() {
+                this.dy += gravity; // Apply gravity to vertical velocity
+            },
+
+            /**
+             * Draws the player character on the canvas using its current image.
+             */
+            draw() {
+                if (this.currentImage) {
+                    // Draw the player image based on its world position and the current scroll offset
+                    ctx.drawImage(this.currentImage, this.worldX - scrollX, this.worldY, this.width, this.height);
+                }
+            }
+        };
+
+        // Class definition for game platforms
+        class Platform {
+            /**
+             * @param {number} worldX - The X-coordinate of the platform in the game world.
+             * @param {number} worldY - The Y-coordinate of the platform in the game world.
+             * @param {number} width - The width of the platform.
+             * @param {number} height - The Height of the platform.
+             * @param {string} color - The fill color of the platform (default is a greenish-blue).
+             */
+            constructor(worldX, worldY, width, height, color = '#55B4B0') {
+                this.worldX = worldX; // World X coordinate
+                this.worldY = worldY; // World Y coordinate
+                this.width = width;
+                this.height = height;
+                this.color = color;
+            }
+
+            /**
+             * Draws the platform on the canvas, adjusting its position based on the current scroll offset.
+             */
+            draw() {
+                ctx.fillStyle = this.color; // Set the fill color for the platform
+                // Draw a rectangle for the platform, offsetting by scrollX
+                ctx.fillRect(this.worldX - scrollX, this.worldY, this.width, this.height);
+                // Add a border for visual separation
+                ctx.strokeStyle = '#3a8a86';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.worldX - scrollX, this.worldY, this.width, this.height);
+            }
+        }
+
+        // Class definition for enemy characters (bad guys)
+        class BadGuy {
+            /**
+             * @param {number} worldX - Initial X-coordinate in the game world.
+             * @param {number} worldY - Initial Y-coordinate in the game world.
+             * @param {number} width - Width of the enemy sprite.
+             * @param {number} height - Height of the enemy sprite.
+             * @param {number} speed - Horizontal movement speed of the enemy.
+             * @param {number} patrolDistance - How far the enemy patrols from its starting X.
+             * @param {string} imageSrc - URL for the enemy's image sprite.
+             */
+            constructor(worldX, worldY, width, height, speed, patrolDistance, imageSrc) {
+                this.worldX = worldX;
+                this.worldY = worldY;
+                this.width = width;
+                this.height = height;
+                this.speed = speed;
+                this.direction = 1; // 1 for right, -1 for left
+                this.patrolStart = worldX; // Starting point of patrol
+                this.patrolEnd = worldX + patrolDistance; // End point of patrol
+                this.image = new Image();
+                this.image.src = imageSrc;
+
+                // Add to total assets to load
+                loadAsset(this.image, imageSrc); // Integrate into the asset loading system
+            }
+
+            /**
+             * Updates the bad guy's position and direction for patrolling.
+             */
+            update() {
+                this.worldX += this.speed * this.direction;
+
+                // Reverse direction if hitting patrol boundaries
+                if (this.direction === 1 && this.worldX + this.width > this.patrolEnd) {
+                    this.direction = -1;
+                } else if (this.direction === -1 && this.worldX < this.patrolStart) {
+                    this.direction = 1;
+                }
+            }
+
+            /**
+             * Draws the bad guy on the canvas, adjusted for current scroll.
+             */
+            draw() {
+                if (this.image.complete && this.image.naturalWidth !== 0) {
+                    ctx.drawImage(this.image, this.worldX - scrollX, this.worldY, this.width, this.height);
+                } else {
+                    // Fallback: draw a red rectangle if image not loaded or failed
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(this.worldX - scrollX, this.worldY, this.width, this.height);
+                }
+            }
+        }
+
+
+        // Array to store all platform objects in the game level
+        let platforms = [];
+        // Array to store all bad guy objects in the game level
+        let badGuys = [];
+
+        // Global asset loading variables
+        let assetsLoadedCount = 0;
+        let totalAssetsToLoad = 0;
+        let assetsLoadingPromises = []; // Array to hold promises for each asset loading
+
+        /**
+         * Loads a single asset (image) and updates the global asset loading counters.
+         * Returns a Promise that resolves when the asset is loaded.
+         * @param {HTMLImageElement} imageObject - The Image object to load into.
+         * @param {string} src - The URL of the image.
+         * @returns {Promise<void>} A promise that resolves on load or rejects on error.
+         */
+        function loadAsset(imageObject, src) {
+            return new Promise((resolve, reject) => {
+                imageObject.src = src;
+                imageObject.onload = () => {
+                    assetsLoadedCount++;
+                    resolve();
+                };
+                imageObject.onerror = () => {
+                    console.error(`Failed to load asset: ${src}`);
+                    // Although it rejects, we still resolve the promise to not block game start completely,
+                    // but the draw method will use a fallback.
+                    assetsLoadedCount++;
+                    resolve();
+                };
+            });
+        }
+
+
+        /**
+         * Initializes the game level by creating the ground, platforms, and bad guys.
+         */
+        function initLevel() {
+            // Clear previous level data
+            platforms = [];
+            badGuys = [];
+
+            // Create the main ground platform, extending far to the right for scrolling
+            platforms.push(new Platform(0, canvas.height - 40, LEVEL_LENGTH, 40, '#8B4513'));
+
+            // Define a base set of platforms and enemies for easy repetition
+            const basePlatforms = [
+                { x: 300, y: canvas.height - 100, w: 100, h: 20 },
+                { x: 500, y: canvas.height - 150, w: 80, h: 20 },
+                { x: 700, y: canvas.height - 100, w: 120, h: 20 },
+                { x: 950, y: canvas.height - 180, w: 150, h: 20 },
+                { x: 1200, y: canvas.height - 100, w: 100, h: 20 },
+                { x: 1400, y: canvas.height - 150, w: 150, h: 20 },
+                { x: 1600, y: canvas.height - 200, w: 80, h: 20 },
+                { x: 1900, y: canvas.height - 120, w: 90, h: 20 },
+                { x: 2150, y: canvas.height - 200, w: 110, h: 20 },
+                { x: 2400, y: canvas.height - 150, w: 130, h: 20 },
+                { x: 2700, y: canvas.height - 180, w: 100, h: 20 },
+                { x: 2950, y: canvas.height - 100, w: 180, h: 20 },
+                { x: 3200, y: canvas.height - 220, w: 90, h: 20 },
+                { x: 3450, y: canvas.height - 150, w: 120, h: 20 },
+            ];
+
+            const baseEnemies = [
+                { x: 400, patrol: 80, speed: enemySpeed },
+                { x: 1000, patrol: 100, speed: enemySpeed },
+                { x: 1500, patrol: 150, speed: enemySpeed * 1.2 },
+                { x: 2200, patrol: 70, speed: enemySpeed },
+                { x: 3000, patrol: 120, speed: enemySpeed * 0.8 },
+            ];
+
+            const sectionLength = 3600; // Approximate length of one repeating section
+            const numSections = Math.ceil(LEVEL_LENGTH / sectionLength); // Calculate how many sections needed
+
+            const enemyHeight = 32; // Fixed enemy height for positioning
+
+            for (let s = 0; s < numSections; s++) {
+                const offsetX = s * sectionLength;
+
+                // Add platforms for current section
+                basePlatforms.forEach(p => {
+                    if (p.x + offsetX < LEVEL_LENGTH - 200) { // Don't add platforms too close to the flag
+                        platforms.push(new Platform(p.x + offsetX, p.y, p.w, p.h));
+                    }
+                });
+
+                // Add enemies for current section
+                baseEnemies.forEach(e => {
+                    if (e.x + offsetX < LEVEL_LENGTH - 200) { // Don't add enemies too close to the flag
+                        badGuys.push(new BadGuy(e.x + offsetX, canvas.height - 40 - enemyHeight, enemyHeight, enemyHeight, e.speed, e.patrol, 'https://i.imgur.com/nHLiQKf.png')); // Changed enemy image
+                    }
+                });
+            }
+
+            // Adjust flag position to the new end of the level
+            flag.worldX = LEVEL_LENGTH - 150; // Place flag near the end
+        }
+
+        // Flag object definition (the victory pole)
+        const flag = {
+            worldX: 0, // Will be set in initLevel based on levelLength
+            worldY: canvas.height - 150, // Position above the ground
+            width: 30, // Width of the flag area
+            height: 110, // Height of the flag pole
+            color: '#FFD700', // Gold for the flag banner
+            poleColor: '#607d8b', // Grey-blue for the pole
+
+            draw() {
+                // Draw the flag pole
+                ctx.fillStyle = this.poleColor;
+                ctx.fillRect(this.worldX - scrollX, this.worldY, 10, this.height);
+
+                // Draw the flag banner (triangle shape)
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.moveTo(this.worldX - scrollX + 10, this.worldY); // Top-left of banner
+                ctx.lineTo(this.worldX - scrollX + this.width, this.worldY + this.height / 6); // Right point
+                ctx.lineTo(this.worldX - scrollX + 10, this.worldY + this.height / 3); // Bottom-left of banner
+                ctx.closePath();
+                ctx.fill();
+            }
+        };
+
+        // Game state flags
+        let gameWon = false;
+        let gameOver = false;
+        let messageBoxVisible = false;
+        let messageText = '';
+        let messageBoxColor = '#4CAF50'; // Default win color
+        let animationFrameId; // To store the requestAnimationFrame ID for stopping the loop
+
+        /**
+         * Checks for collision between two rectangular objects (Axis-Aligned Bounding Box).
+         * @param {object} obj1 - The first object (e.g., player), expected to have worldX, worldY, width, height.
+         * @param {object} obj2 - The second object (e.g., platform, flag), expected to have worldX, worldY, width, height.
+         * @returns {boolean} True if the objects are colliding, false otherwise.
+         */
+        function checkCollision(obj1, obj2) {
+            return obj1.worldX < obj2.worldX + obj2.width &&
+                   obj1.worldX + obj1.width > obj2.worldX &&
+                   obj1.worldY < obj2.worldY + obj2.height &&
+                   obj1.worldY + obj1.height > obj2.worldY;
+        }
+
+        /**
+         * Displays a message box on the canvas and sets the game over state.
+         * @param {string} message - The text to display in the message box.
+         * @param {string} boxColor - The background color of the message box.
+         * @param {boolean} showRestartButton - Whether to show a restart button.
+         */
+        function displayMessage(message, boxColor = '#4CAF50', showRestartButton = false) {
+            messageText = message;
+            messageBoxVisible = true;
+            gameOver = true; // End the game when a message is displayed (e.g., win/lose)
+            messageBoxColor = boxColor; // Store the box color
+
+            // Clear any existing message box overlay and button
+            let existingOverlay = document.getElementById('message-box-overlay');
+            if (existingOverlay) {
+                existingOverlay.remove();
+            }
+
+            // Create new message box overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'message-box-overlay';
+            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+            overlay.style.position = 'absolute';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.display = 'flex';
+            overlay.style.flexDirection = 'column';
+            overlay.style.justifyContent = 'center';
+            overlay.style.alignItems = 'center';
+            overlay.style.zIndex = '100'; // Ensure it's on top
+            overlay.style.color = 'white';
+            overlay.style.fontFamily = '"Inter", sans-serif';
+            document.body.appendChild(overlay);
+
+            const messageHeader = document.createElement('h2');
+            messageHeader.style.fontSize = '2.5em'; /* Adjusted font size to fit */
+            messageHeader.style.marginBottom = '20px';
+            messageHeader.textContent = message;
+            messageHeader.style.textAlign = 'center'; /* Added to ensure text is centered */
+            overlay.appendChild(messageHeader);
+
+            if (showRestartButton) {
+                const restartButton = document.createElement('button');
+                restartButton.id = 'restart-button';
+                restartButton.className = 'game-button';
+                restartButton.textContent = 'Restart';
+                restartButton.addEventListener('click', restartGame);
+                overlay.appendChild(restartButton);
+
+                // Stop background music and play game over sound only when dying
+                backgroundMusic.pause();
+                gameOverSound.currentTime = 0; // Rewind to start
+                gameOverSound.play().catch(e => console.error("Game over audio play failed:", e));
+            } else {
+                // If it's a win message (no restart button), background music continues
+                // The background music should NOT be paused here. It continues playing.
+            }
+
+            cancelAnimationFrame(animationFrameId); // Stop the game loop
+        }
+
+
+        /**
+         * Draws the transparent message box overlay and text on the canvas (Deprecated, now using HTML overlay).
+         * This function remains for consistency but is effectively replaced by `displayMessage`'s HTML overlay.
+         */
+        function drawMessageBox() {
+            // This function is now largely superseded by the HTML overlay in displayMessage.
+            // Keeping it for legacy, but its drawing capabilities might not be seen
+            // if the HTML overlay is active.
+            if (messageBoxVisible) {
+                // If the overlay is used, drawing directly on canvas here is redundant for message box itself.
+                // However, if we wanted a direct canvas message, this logic would apply.
+            }
+        }
+
+        /**
+         * Resets the game state and starts a new game.
+         */
+        function restartGame() {
+            // Remove the message box overlay
+            const existingOverlay = document.getElementById('message-box-overlay');
+            if (existingOverlay) {
+                existingOverlay.remove();
+            }
+
+            // Reset player state
+            player.worldX = canvas.width / 4;
+            player.worldY = canvas.height - 40 - player.height; // Reset to ground level
+            player.dx = 0;
+            player.dy = 0;
+            player.isJumping = false;
+            player.onGround = true;
+            player.currentImage = player.imageStanding;
+
+            // Reset game flags and scroll
+            gameWon = false;
+            gameOver = false;
+            messageBoxVisible = false;
+            scrollX = 0;
+
+            initLevel(); // Re-initialize platforms and enemies
+
+            // Play music and start the game loop again
+            backgroundMusic.currentTime = 0; // Rewind music
+            backgroundMusic.play();
+            gameLoop(); // Restart the animation loop
+        }
+
+
+        /**
+         * The main game loop function. This function is called repeatedly
+         * to update game state and redraw the canvas.
+         */
+        function gameLoop() {
+            // If the game is over, only draw the message box and stop further game logic updates
+            if (gameOver) {
+                drawMessageBox(); // Call this to ensure the HTML overlay handles display
+                return;
+            }
+
+            animationFrameId = requestAnimationFrame(gameLoop); // Store ID to cancel later
+
+            // Clear the entire canvas before drawing new frames
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Update player velocities (gravity)
+            player.update();
+
+            // Store previous positions for accurate collision detection
+            const prevPlayerWorldX = player.worldX;
+            const prevPlayerWorldY = player.worldY;
+
+            // 2. Apply velocities to player's current position (tentative new position)
+            player.worldX += player.dx; // Apply horizontal movement
+            player.worldY += player.dy; // Apply vertical movement
+
+            // Ensure player does not go off the left edge of the world
+            player.worldX = Math.max(0, player.worldX);
+
+            // 3. Reset onGround status for current frame's collision check
+            player.onGround = false;
+
+            // 4. Collision Detection and Resolution with platforms (X-axis then Y-axis)
+            // Loop through platforms twice for separate axis resolution
+            // First for X-axis
+            for (let i = 0; i < platforms.length; i++) {
+                const platform = platforms[i];
+                // Create a temporary player bounding box at the *new X* position, but *old Y* position
+                const playerNextXRect = {
+                    worldX: player.worldX,
+                    worldY: prevPlayerWorldY, // Use previous Y for X-axis collision check
+                    width: player.width,
+                    height: player.height
+                };
+
+                if (checkCollision(playerNextXRect, platform)) {
+                    // Horizontal collision occurred. Revert X movement and stop dx.
+                    if (player.dx > 0) { // Moving right
+                        player.worldX = platform.worldX - player.width;
+                    } else if (player.dx < 0) { // Moving left
+                        player.worldX = platform.worldX + platform.width;
+                    }
+                    player.dx = 0; // Stop horizontal movement upon hitting a side
+                }
+            }
+
+            // Then for Y-axis (after X has been resolved)
+            for (let i = 0; i < platforms.length; i++) {
+                const platform = platforms[i];
+                // Create a temporary player bounding box at the *current X* (resolved X), but *new Y* position
+                const playerNextYRect = {
+                    worldX: player.worldX,
+                    worldY: player.worldY,
+                    width: player.width,
+                    height: player.height
+                };
+
+                if (checkCollision(playerNextYRect, platform)) {
+                    // Player is intersecting vertically with a platform
+                    if (player.dy >= 0) { // Player is moving downwards (or still)
+                        // Check if player was above platform's top in previous frame (landing condition)
+                        // This allows player to jump through platforms from below (dy < 0 ignored for vertical collision)
+                        if (prevPlayerWorldY + player.height <= platform.worldY) {
+                            player.worldY = platform.worldY - player.height; // Snap to top
+                            player.dy = 0; // Stop falling
+                            player.onGround = true; // Landed
+                            player.isJumping = false; // No longer jumping
+                            player.currentImage = player.imageStanding; // Standing sprite
+                        }
+                    }
+                }
+            }
+
+            // 5. Update player image based on current state after all collisions are resolved
+            if (player.onGround && player.currentImage !== player.imageStanding) {
+                player.currentImage = player.imageStanding;
+            } else if (!player.onGround && player.currentImage !== player.imageJumping) {
+                player.currentImage = player.imageJumping;
+            }
+
+
+            // 6. Handle horizontal scrolling of the game world (camera logic)
+            const playerScreenX = player.worldX - scrollX;
+
+            // If player moves past the right threshold on screen, shift camera right
+            const cameraFollowThresholdRight = canvas.width * 0.5; // E.g., center of screen
+            if (playerScreenX > cameraFollowThresholdRight) {
+                scrollX = player.worldX - cameraFollowThresholdRight;
+            }
+
+            // If player moves past the left threshold on screen, shift camera left (but not below 0 world X)
+            const cameraFollowThresholdLeft = canvas.width * 0.25; // E.g., 1/4 of screen
+            if (playerScreenX < cameraFollowThresholdLeft && scrollX > 0) {
+                 scrollX = player.worldX - cameraFollowThresholdLeft;
+            }
+
+            // Ensure scrollX never goes below 0 (cannot scroll before the start of the level)
+            scrollX = Math.max(0, scrollX);
+            // Ensure scrollX doesn't go past the end of the level
+            if (LEVEL_LENGTH > canvas.width) {
+                scrollX = Math.min(scrollX, LEVEL_LENGTH - canvas.width);
+            } else {
+                scrollX = 0;
+            }
+
+
+            // 7. Update and Draw Bad Guys, and check for collision with player
+            for (let i = 0; i < badGuys.length; i++) {
+                const badGuy = badGuys[i];
+                badGuy.update(); // Update bad guy's position
+                badGuy.draw(); // Draw bad guy
+
+                // Check for collision between player and bad guy
+                if (checkCollision(player, badGuy)) {
+                    displayMessage("GAME OVER! You touched an enemy.", '#DC3545', true); // Show restart button
+                    return; // Stop the game loop immediately if game over
+                }
+            }
+
+            // 8. Check for victory condition: player crosses the flag horizontally
+            if (!gameWon && player.worldX + (player.width / 2) > flag.worldX) {
+                gameWon = true;
+                displayMessage("YOU WIN! Level Complete!", '#4CAF50', false); // No restart button for win
+            }
+
+            // Draw all platforms (after their positions have been potentially updated by scrollX)
+            for (let i = 0; i < platforms.length; i++) {
+                platforms[i].draw();
+            }
+
+            flag.draw(); // Draw the flag on the canvas
+            player.draw(); // Draw the player on the canvas
+
+            // drawMessageBox(); // No longer needed as HTML overlay handles display
+        }
+
+        // Event listener for keyboard key presses (keydown)
+        document.addEventListener('keydown', (e) => {
+            // Only allow input if the game is not over
+            if (gameOver) return;
+
+            // Check which key was pressed for movement and jump
+            if (e.code === 'ArrowLeft') {
+                player.dx = -playerSpeed; // Move left
+            } else if (e.code === 'ArrowRight') {
+                player.dx = playerSpeed; // Move right
+            } else if (e.code === 'ArrowUp') { // Use ArrowUp for jump
+                player.jump(); // Call the player's jump method
+            }
+        });
+
+        // Event listener for keyboard key releases (keyup)
+        document.addEventListener('keyup', (e) => {
+            // Only allow input if the game is not over
+            if (gameOver) return;
+
+            // When arrow keys are released, stop horizontal movement
+            // Only set dx to 0 if the key released corresponds to the current movement direction
+            if (e.code === 'ArrowLeft' && player.dx < 0) {
+                player.dx = 0;
+            } else if (e.code === 'ArrowRight' && player.dx > 0) {
+                player.dx = 0;
+            }
+        });
+
+        /**
+         * Shows the main menu and prepares the game for start.
+         */
+        function showMainMenu() {
+            mainMenu.style.display = 'flex'; // Show the main menu
+            canvas.style.display = 'none'; // Hide the canvas
+            gameInfo.style.display = 'none'; // Hide game info
+        }
+
+        /**
+         * Function to start the game. It is called when the "Start Game" button is clicked.
+         */
+        function startGame() {
+            mainMenu.style.display = 'none'; // Hide the main menu
+            canvas.style.display = 'block'; // Show the canvas
+            gameInfo.style.display = 'block'; // Show game info
+
+            // Play background music
+            backgroundMusic.volume = 0.5; // 50% volume
+            backgroundMusic.play().catch(e => console.error("Audio play failed:", e)); // Handle potential Autoplay Policy issues
+
+            // Adjust player's initial Y position to be on top of the ground
+            player.worldY = canvas.height - 40 - player.height;
+            player.onGround = true; // Player starts on the ground
+
+            initLevel(); // Initialize the level platforms and layout
+            gameLoop(); // Start the main animation and game logic loop
+        }
+
+        // Event listener for the start button
+        startButton.addEventListener('click', startGame);
+
+        // Initialize game when the window has fully loaded
+        window.onload = () => {
+            // Add player images to the asset loading list
+            assetsLoadingPromises.push(loadAsset(player.imageStanding, 'https://i.imgur.com/UsJ4z34.png')); // Updated player image
+            assetsLoadingPromises.push(loadAsset(player.imageJumping, 'https://i.imgur.com/nBLnR1J.png'));
+
+            // Call initLevel to populate badGuys array, which in turn adds their images to assetsLoadingPromises
+            // Note: initLevel is called here to ensure enemies are populated for asset loading,
+            // but their positions will be reset in startGame/restartGame.
+            initLevel();
+
+            // Wait for all assets (player and bad guy images) to load before showing the main menu
+            Promise.all(assetsLoadingPromises)
+                .then(() => {
+                    player.currentImage = player.imageStanding; // Set initial player image after loading
+                    showMainMenu(); // Show main menu once assets are loaded
+                })
+                .catch(error => {
+                    console.error("Error loading game assets:", error);
+                    // Optionally, display a message to the user that assets failed to load
+                    displayMessage("Failed to load game assets. Please refresh.", '#DC3545');
+                });
+        };
+
+        // Note: For this simple game, canvas dimensions are fixed.
+        // If dynamic resizing of the game world was required,
+        // this event listener would contain logic to adjust canvas.width/height
+        // and potentially re-layout game elements.
+        window.addEventListener('resize', () => {
+            // Current implementation relies on CSS max-width/max-height for responsiveness of the canvas *element*,
+            // but the internal game coordinates and world size remain fixed.
+        });
+    </script>
+</body>
+</html>
