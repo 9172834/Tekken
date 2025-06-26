@@ -278,6 +278,7 @@
 
         // --- Background Audio Control ---
         const backgroundAudio = document.getElementById('background-audio');
+        backgroundAudio.volume = 0.1; // Set volume to 10%
         const musicToggleButton = document.getElementById('music-toggle-button');
         const welcomeModalOverlay = document.getElementById('welcome-modal-overlay');
         const welcomeEnterButton = document.getElementById('welcome-enter-button');
@@ -413,7 +414,7 @@
         function startTimer() {
             stopTimer(); // Clear any existing timer
             timerSeconds = 30 + bonusTimeAccumulated; // Set initial time plus accumulated bonus
-            bonusTimeAccumulated = 0; // Reset bonus for the next question
+            bonusTimeAccumulated = 0; // Reset bonus for the current question as it's been applied
             timerDisplay.textContent = `Time: ${timerSeconds}`;
 
             timerInterval = setInterval(() => {
