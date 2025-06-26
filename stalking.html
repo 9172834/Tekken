@@ -977,9 +977,9 @@
 
             // Manage peeking character visibility
             if (isPeeking && !gameOver) {
-                peekingCharacter.classList.add('Stalking');
+                peekingCharacter.classList.add('peeking'); // FIX: Changed 'Stalking' to 'peeking'
             } else {
-                peekingCharacter.classList.remove('Stalking');
+                peekingCharacter.classList.remove('peeking'); // FIX: Changed 'Stalking' to 'peeking'
             }
 
             // Game end conditions
@@ -988,7 +988,7 @@
                 // This state ensures the button is disabled and images are retracted.
                 statusMessage.textContent = "GAME OVER!";
                 peekUnpeekButton.disabled = true;
-                peekingCharacter.classList.remove('Stalking'); // Ensure character retracts on game over
+                peekingCharacter.classList.remove('peeking'); // Ensure character retracts on game over
                 copImage.classList.remove('active'); // Ensure cop retracts on game over
                 clearInterval(targetPositionInterval); // Stop target movement
                 if (activeTargetImageElement) activeTargetImageElement.style.animationPlayState = 'paused'; // Pause target movement
@@ -1185,7 +1185,7 @@
 
             isPeeking = true;
             peekUnpeekButton.textContent = "Stop Stalking";
-            peekingCharacter.classList.add('Stalking');
+            peekingCharacter.classList.add('peeking'); // FIX: Changed 'Stalking' to 'peeking'
             peekProgressInterval = setInterval(incrementPeekProgress, config.peekIntervalMs); // Uses the new peekIntervalMs
 
             if (isCopPresent) {
@@ -1206,7 +1206,7 @@
         function stopPeeking() {
             isPeeking = false;
             peekUnpeekButton.textContent = "Stalk";
-            peekingCharacter.classList.remove('stalking');
+            peekingCharacter.classList.remove('peeking'); // FIX: Changed 'stalking' to 'peeking'
             clearInterval(peekProgressInterval);
 
             if (isCopPresent) {
