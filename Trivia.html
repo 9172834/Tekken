@@ -353,12 +353,25 @@
         const finalScoreDisplay = document.getElementById('final-score');
         const playAgainButton = document.getElementById('play-again-button');
 
-        let questions = [];
+        let allQuestions = []; // Stores all questions initially fetched
+        let questions = []; // Stores shuffled questions for the current game
         let currentQuestionIndex = 0;
         let score = 0;
         let timerSeconds = 30; // Initial time for each question
         let timerInterval; // To store the interval ID
         let bonusTimeAccumulated = 0; // Time added for the next question
+
+        /**
+         * Fisher-Yates (Knuth) Shuffle algorithm.
+         * Shuffles an array in place.
+         * @param {Array} array - The array to shuffle.
+         */
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+            }
+        }
 
         /**
          * Fetches trivia questions from 'triviaquestions.txt'.
@@ -371,7 +384,7 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const text = await response.text();
-                questions = text.split('\n')
+                allQuestions = text.split('\n') // Store original questions
                     .map(line => line.trim())
                     .filter(line => line.length > 0 && line.includes('|')) // Ensure line has content and a separator
                     .map(line => {
@@ -387,14 +400,16 @@
                     })
                     .filter(q => q !== null); // Filter out any null entries from invalid lines
 
-                if (questions.length === 0) {
+                if (allQuestions.length === 0) {
                     questionDisplay.textContent = "No questions found in triviaquestions.txt or invalid format.";
                     disableButtons();
                     console.error("No valid questions loaded.");
                 } else {
                     // Questions loaded, enable the start button
                     welcomeEnterButton.disabled = false;
-                    // Optional: You could update the welcome modal text here to say "Questions Loaded, Ready to Play!"
+                    // Update welcome modal message
+                    const welcomeMessage = document.querySelector('#welcome-modal-content p');
+                    welcomeMessage.textContent = "Test your knowledge of the Unsung Legend!";
                 }
             } catch (error) {
                 console.error('Error fetching trivia questions:', error);
@@ -407,6 +422,10 @@
          * Starts a new game of trivia.
          */
         function startGame() {
+            // Create a shuffled copy of allQuestions for the current game
+            questions = [...allQuestions];
+            shuffleArray(questions);
+
             currentQuestionIndex = 0;
             score = 0;
             bonusTimeAccumulated = 0; // Reset bonus time at the start of a new game
@@ -509,15 +528,31 @@
             stopTimer(); // Ensure timer is stopped at game end
             gameContainer.classList.add('hidden'); // Hide the main game
             gameOverScreen.classList.remove('hidden'); // Show game over screen
-            finalScoreDisplay.textContent = `Your final score: ${score} out of ${questions.length}`;
-            // Optional: You could add a message based on the score
-            if (score === questions.length) {
-                finalScoreDisplay.textContent += " - A true Tekken Master!";
-            } else if (score > questions.length / 2) {
-                finalScoreDisplay.textContent += " - Not bad, not bad!";
+
+            const totalQuestions = questions.length;
+            let finalMessage = "";
+
+            if (totalQuestions === 0) {
+                finalMessage = "No questions were loaded for the game.";
             } else {
-                finalScoreDisplay.textContent += " - Maybe Tekken knows more about you!";
+                const percentage = (score / totalQuestions) * 100;
+                let gradeMessage = "";
+
+                if (percentage === 100) {
+                    gradeMessage = "A perfect score! You are a true Tekken Master!";
+                } else if (percentage >= 80) {
+                    gradeMessage = "Excellent! You know your Tekken lore!";
+                } else if (percentage >= 60) {
+                    gradeMessage = "Good job! You're learning fast!";
+                } else if (percentage >= 40) {
+                    gradeMessage = "Keep practicing! You'll get there!";
+                } else {
+                    gradeMessage = "Better luck next time! Time to brush up on Tekken facts!";
+                }
+                finalMessage = `You did it! You scored ${percentage.toFixed(0)}% (${score} out of ${totalQuestions})! ${gradeMessage}`;
             }
+            
+            finalScoreDisplay.textContent = finalMessage;
         }
 
         /**
@@ -563,15 +598,7 @@
 
 
             // Fetch questions once the page is loaded (they won't be displayed until the game starts)
-            fetchQuestions().then(() => {
-                // Once questions are fetched, update welcome message and enable button
-                if (questions.length > 0) {
-                    welcomeMessage.textContent = "Test your knowledge of the Unsung Legend!";
-                    welcomeEnterButton.disabled = false;
-                } else {
-                    welcomeMessage.textContent = "No questions found! Check triviaquestions.txt";
-                }
-            });
+            fetchQuestions();
         });
     </script>
 
