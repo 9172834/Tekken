@@ -223,6 +223,12 @@
             color: #fcd34d; /* Amber-300 */
             margin-bottom: 1rem;
         }
+
+        #question-count-display {
+            font-size: 1.1rem;
+            color: #cbd5e0; /* light gray */
+            margin-top: 0.5rem;
+        }
     </style>
 </head>
 <body class="text-gray-200 antialiased">
@@ -252,8 +258,8 @@
         <button id="music-toggle-button">Pause Music</button>
 
         <h2 class="text-3xl md:text-4xl font-bold mb-4 text-red-400">Tekken Trivia</h2>
-        <div id="score-display" class="text-xl mb-3">Score: 0</div>
-        <div id="timer-display" class="text-xl mb-6">Time: 30</div>
+        <div id="timer-display" class="text-xl mb-3">Time: 30</div>
+        <div id="question-count-display" class="text-xl mb-6"></div>
 
         <div id="question-display" class="text-2xl mb-8 leading-relaxed min-h-[90px] flex items-center justify-center text-center">
             Loading questions...
@@ -342,8 +348,9 @@
 
         // --- Trivia Game Logic ---
         const gameContainer = document.getElementById('game-container');
-        const scoreDisplay = document.getElementById('score-display');
-        const timerDisplay = document.getElementById('timer-display'); // New timer display element
+        // Removed scoreDisplay
+        const timerDisplay = document.getElementById('timer-display');
+        const questionCountDisplay = document.getElementById('question-count-display'); // New element
         const questionDisplay = document.getElementById('question-display');
         const trueButton = document.getElementById('true-button');
         const falseButton = document.getElementById('false-button');
@@ -356,10 +363,9 @@
         let allQuestions = []; // Stores all questions initially fetched
         let questions = []; // Stores shuffled questions for the current game
         let currentQuestionIndex = 0;
-        let score = 0;
-        let timerSeconds = 30; // Initial time for each question
-        let timerInterval; // To store the interval ID
-        let bonusTimeAccumulated = 0; // Time added for the next question
+        let correctAnswersCount = 0; // Renamed 'score' to 'correctAnswersCount' for clarity
+        let totalGameTime = 30; // Initial total time for the game
+        let timerInterval;
 
         /**
          * Fisher-Yates (Knuth) Shuffle algorithm.
@@ -389,25 +395,24 @@
                     .filter(line => line.length > 0 && line.includes('|')) // Ensure line has content and a separator
                     .map(line => {
                         const parts = line.split('|');
-                        // Ensure there are at least two parts (statement and answer)
                         if (parts.length >= 2) {
                             return {
                                 question: parts[0].trim(),
-                                answer: parts[1].trim().toLowerCase() === 't' // 't' for true, anything else (like 'f') for false
+                                answer: parts[1].trim().toLowerCase() === 't'
                             };
                         }
-                        return null; // Return null for invalid lines
+                        return null;
                     })
-                    .filter(q => q !== null); // Filter out any null entries from invalid lines
+                    .filter(q => q !== null);
 
                 if (allQuestions.length === 0) {
                     questionDisplay.textContent = "No questions found in triviaquestions.txt or invalid format.";
                     disableButtons();
                     console.error("No valid questions loaded.");
+                    const welcomeMessage = document.querySelector('#welcome-modal-content p');
+                    welcomeMessage.textContent = "Error: No questions found! Please check 'triviaquestions.txt'.";
                 } else {
-                    // Questions loaded, enable the start button
                     welcomeEnterButton.disabled = false;
-                    // Update welcome modal message
                     const welcomeMessage = document.querySelector('#welcome-modal-content p');
                     welcomeMessage.textContent = "Test your knowledge of the Unsung Legend!";
                 }
@@ -415,6 +420,8 @@
                 console.error('Error fetching trivia questions:', error);
                 questionDisplay.textContent = "Failed to load trivia questions. Please ensure 'triviaquestions.txt' exists and is correctly formatted.";
                 disableButtons();
+                const welcomeMessage = document.querySelector('#welcome-modal-content p');
+                welcomeMessage.textContent = "Error loading questions. Please check console for details.";
             }
         }
 
@@ -422,32 +429,31 @@
          * Starts a new game of trivia.
          */
         function startGame() {
-            // Create a shuffled copy of allQuestions for the current game
             questions = [...allQuestions];
             shuffleArray(questions);
 
             currentQuestionIndex = 0;
-            score = 0;
-            bonusTimeAccumulated = 0; // Reset bonus time at the start of a new game
-            updateScoreDisplay();
+            correctAnswersCount = 0;
+            totalGameTime = 30; // Reset total game time for a new game
+            
             gameOverScreen.classList.add('hidden');
-            gameContainer.classList.remove('hidden'); // Ensure game container is visible after welcome
-            displayQuestion(); // Display the first question when the game starts
+            gameContainer.classList.remove('hidden');
+            
+            startContinuousTimer(); // Start the overall game timer
+            displayQuestion();
         }
 
         /**
-         * Starts the countdown timer for the current question.
+         * Starts the continuous countdown timer for the entire game.
          */
-        function startTimer() {
+        function startContinuousTimer() {
             stopTimer(); // Clear any existing timer
-            timerSeconds = 30 + bonusTimeAccumulated; // Set initial time plus accumulated bonus
-            bonusTimeAccumulated = 0; // Reset bonus for the current question as it's been applied
-            timerDisplay.textContent = `Time: ${timerSeconds}`;
+            timerDisplay.textContent = `Time: ${totalGameTime}`;
 
             timerInterval = setInterval(() => {
-                timerSeconds--;
-                timerDisplay.textContent = `Time: ${timerSeconds}`;
-                if (timerSeconds <= 0) {
+                totalGameTime--;
+                timerDisplay.textContent = `Time: ${totalGameTime}`;
+                if (totalGameTime <= 0) {
                     handleTimeUp();
                 }
             }, 1000);
@@ -466,16 +472,16 @@
         function handleTimeUp() {
             stopTimer();
             disableButtons();
-            feedbackMessage.textContent = `Time's up! The answer was ${questions[currentQuestionIndex].answer ? 'True' : 'False'}.`;
-            feedbackMessage.classList.add('incorrect');
-            // Automatically move to the next question after a short delay
+            feedbackMessage.textContent = `Time's up! Game over.`;
+            feedbackMessage.classList.add('incorrect'); // Use incorrect styling for time up
+            // End the game immediately on time up
             setTimeout(() => {
-                nextQuestion();
-            }, 2000); // 2-second delay before moving to next question
+                 endGame();
+            }, 2000); // 2-second delay before moving to game over screen
         }
 
         /**
-         * Displays the current question.
+         * Displays the current question and updates question count.
          */
         function displayQuestion() {
             if (currentQuestionIndex < questions.length) {
@@ -485,9 +491,10 @@
                 feedbackMessage.classList.remove('correct', 'incorrect');
                 nextQuestionButton.classList.add('hidden');
                 enableButtons();
-                startTimer(); // Start timer for the new question
+                // Update question count display
+                questionCountDisplay.textContent = `Question ${currentQuestionIndex + 1} of ${questions.length}`;
             } else {
-                endGame();
+                endGame(); // No more questions
             }
         }
 
@@ -496,21 +503,21 @@
          * @param {boolean} userAnswer - True if the user clicked True, False if False.
          */
         function checkAnswer(userAnswer) {
-            stopTimer(); // Stop timer as soon as an answer is given
             disableButtons(); // Disable buttons after an answer is given
             const correctAnswer = questions[currentQuestionIndex].answer;
 
             if (userAnswer === correctAnswer) {
-                score++;
+                correctAnswersCount++;
                 feedbackMessage.textContent = 'Correct!';
                 feedbackMessage.classList.add('correct');
-                bonusTimeAccumulated += 15; // Add bonus time for the next question
+                totalGameTime += 15; // Add bonus time to the continuous timer
+                timerDisplay.textContent = `Time: ${totalGameTime}`; // Update timer immediately
             } else {
                 feedbackMessage.textContent = `Incorrect! The answer was ${correctAnswer ? 'True' : 'False'}.`;
                 feedbackMessage.classList.add('incorrect');
             }
-            updateScoreDisplay();
-            nextQuestionButton.classList.remove('hidden'); // Show next button
+            // Move to the next question after feedback
+            nextQuestionButton.classList.remove('hidden');
         }
 
         /**
@@ -522,7 +529,7 @@
         }
 
         /**
-         * Ends the game and displays the final score.
+         * Ends the game and displays the final score as a percentage.
          */
         function endGame() {
             stopTimer(); // Ensure timer is stopped at game end
@@ -535,7 +542,7 @@
             if (totalQuestions === 0) {
                 finalMessage = "No questions were loaded for the game.";
             } else {
-                const percentage = (score / totalQuestions) * 100;
+                const percentage = (correctAnswersCount / totalQuestions) * 100;
                 let gradeMessage = "";
 
                 if (percentage === 100) {
@@ -549,17 +556,10 @@
                 } else {
                     gradeMessage = "Better luck next time! Time to brush up on Tekken facts!";
                 }
-                finalMessage = `You did it! You scored ${percentage.toFixed(0)}% (${score} out of ${totalQuestions})! ${gradeMessage}`;
+                finalMessage = `You did it! You scored ${percentage.toFixed(0)}% (${correctAnswersCount} out of ${totalQuestions})! ${gradeMessage}`;
             }
             
             finalScoreDisplay.textContent = finalMessage;
-        }
-
-        /**
-         * Updates the score display.
-         */
-        function updateScoreDisplay() {
-            scoreDisplay.textContent = `Score: ${score}`;
         }
 
         /**
