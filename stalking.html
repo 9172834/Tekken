@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tekken's Stalking Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom CSS for finer control and animations beyond Tailwind */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+            display: flex; /* Keep flex for initial screens, but game-screen will be fixed */
+            justify-content: center; /* Keep for initial screens */
+            align-items: center; /* Keep for initial screens */
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent scroll */
+            background-image: url('https://upload.wikimedia.org/wikipedia/commons/c/c9/Walder_Park.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* Screen containers */
+        .screen-container {
+            background-color: rgba(45, 55, 72, 0.8); /* Slightly opaque background for screens */
+            border-radius: 1.5rem; /* More rounded corners */
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5); /* Stronger shadow */
+            padding: 2.5rem;
+            width: 90%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            animation: fadeIn 1s ease-out;
+            position: relative; /* Changed to relative for initial screens */
+            z-index: 10;
+        }
+
+        /* Specific styling for game-screen to move it to the left and make it compact */
+        #game-screen {
+            position: fixed; /* Fixed position relative to the viewport */
+            left: 20px; /* Position 20px from the left edge */
+            top: 50%; /* Start at 50% from the top */
+            transform: translateY(-50%); /* Adjust vertically to truly center */
+            max-width: 280px; /* Make it more compact */
+            padding: 1.5rem; /* Reduce padding */
+            gap: 1.5rem; /* Reduce gap between elements */
+            align-items: flex-start; /* Align content to the start (left) */
+            text-align: left; /* Align text to the left within the container */
+        }
+        #game-screen h1, #game-screen .text-xl, #game-screen .status-message {
+            text-align: left; /* Ensure text within game screen aligns left */
+            width: 100%; /* Take full width */
+        }
+        #game-screen .game-button {
+            width: 100%; /* Make button take full width for better alignment */
+        }
+
+        .screen-container.hidden {
+            display: none;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .peek-bar-container {
+            background-color: rgba(74, 85, 104, 0.5); /* Transparent background for bars */
+            width: 100%;
+            border-radius: 9999px; /* Fully rounded */
+            height: 1.5rem;
+            overflow: hidden;
+            border: 2px solid rgba(160, 174, 192, 0.5); /* Transparent border */
+        }
+
+        .peek-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(to right, #48bb78, #38a169); /* Green gradient */
+            border-radius: 9999px;
+            transition: width 0.1s ease-out; /* Smooth transition for bar fill */
+        }
+
+        .peek-bar-fill.danger {
+            background: linear-gradient(to right, #ef4444, #dc2626); /* Red gradient for danger */
+        }
+
+        .status-message {
+            font-weight: 600; /* Semi-bold */
+            text-align: center; /* This will be overridden for game-screen content */
+            height: 2.5rem; /* Fixed height to prevent layout shifts */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff; /* Bright white text */
+            transition: color 0.3s ease-in-out;
+            background-color: rgba(0, 0, 0, 0); /* Fully transparent background */
+            font-size: 1.5rem; /* Larger font size */
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7); /* Text shadow for readability */
+        }
+
+        .status-message.cop-alert {
+            color: #ef4444; /* Red for cop alert */
+            animation: pulse 0.8s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); opacity: 1; }
+            to { transform: scale(1.05); opacity: 0.9; }
+        }
+
+        .game-button {
+            padding: 0.8rem 2rem;
+            font-size: 1.125rem;
+            font-weight: 700; /* Bold */
+            color: #fff;
+            background: linear-gradient(to right, #4299e1, #3182ce); /* Blue gradient */
+            border: none;
+            border-radius: 0.75rem; /* Rounded */
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            position: relative; /* For bubble effect */
+            overflow: hidden;
+        }
+
+        .game-button:hover {
+            background: linear-gradient(to right, #3182ce, #2b6cb0); /* Darker blue on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .game-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-button:disabled {
+            background: #6b7280; /* Gray for disabled */
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* Bubble effect on click */
+        .game-button::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background-image: radial-gradient(circle, #fff 10%, transparent 10.01%);
+            background-repeat: no-repeat;
+            background-position: center;
+            transform: scale(10);
+            opacity: 0;
+            transition: transform .5s, opacity 1s;
+        }
+
+        .game-button:active::after {
+            transform: scale(0);
+            opacity: .2;
+            transition: 0s;
+        }
+
+        /* Modified message-box styles */
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(45, 55, 72, 0.9); /* Slightly opaque background for messages */
+            border-radius: 1rem;
+            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            text-align: center;
+            color: #e2e8f0;
+            display: none; /* Hidden by default */
+            flex-direction: column; /* Stack image container and text/button container vertically */
+            gap: 1.5rem; /* Gap between elements inside the message box */
+            animation: popIn 0.3s ease-out;
+            
+            /* Smaller, more contained box */
+            width: auto; /* Let content dictate width */
+            max-width: 400px; /* Max width for general messages */
+            padding: 1.5rem; /* Overall padding for the box */
+            box-sizing: border-box; /* Include padding in the element's total width and height */
+        }
+        
+        /* Specific styling for jail messages */
+        .message-box.jail-busted, .message-box.jail-mastered {
+             max-width: 800px; /* Wider for jail screen */
+             width: 90vw; /* Take more width for jail screen */
+             height: 90vh; /* Take more height for jail screen */
+             padding: 0; /* No padding on the main box as content has its own */
+        }
+
+
+        .message-box-image-wrapper { /* This wrapper is no longer used for non-jail messages */
+            width: 100%;
+            padding-bottom: 75%; /* 4:3 aspect ratio (height is 75% of width) */
+            position: relative;
+            background-color: rgba(0, 0, 0, 0.7); /* Solid background color behind the image */
+            border-top-left-radius: 1rem; /* Match parent border-radius */
+            border-top-right-radius: 1.5rem; /* Match parent border-radius, corrected for consistency */
+            overflow: hidden; /* Ensure image doesn't spill out */
+            display: none; /* Hide by default, only shown for jail messages */
+        }
+        
+        .message-box.jail-busted .message-box-image-wrapper, 
+        .message-box.jail-mastered .message-box-image-wrapper {
+            display: block; /* Show wrapper for jail messages */
+        }
+
+        .message-box-image {
+            max-width: 100%; /* Ensure image fits within the box */
+            height: auto; /* Maintain aspect ratio */
+            display: block; /* Remove extra space below image */
+            margin: 0 auto 1rem; /* Center image and add some bottom margin */
+
+            position: absolute; /* For jail image positioning within wrapper */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Make the entire image fit within the box */
+        }
+
+        .message-box-content {
+            padding: 0; /* Padding will be controlled by the parent .message-box for general messages */
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem; /* Space between text and button */
+            align-items: center;
+            width: 100%;
+            flex-grow: 1; /* Allow content to take remaining space */
+        }
+        
+        .message-box.jail-busted .message-box-content, 
+        .message-box.jail-mastered .message-box-content {
+            padding: 1.5rem; /* Padding for the text and button area within jail screen */
+        }
+
+
+        .message-box p {
+            background-color: rgba(0,0,0,0.5); /* Slightly transparent background for readability */
+            padding: 10px 15px; /* Smaller padding */
+            border-radius: 8px;
+            font-size: 1.8rem; /* Larger font for message */
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.9);
+            margin: 0; /* Remove default paragraph margin */
+        }
+
+        @keyframes popIn {
+            from { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+            to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .message-box button {
+            background-color: #4299e1;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            z-index: 1001; /* Ensure button is above image */
+            margin-top: 0; /* Remove default margin as gap handles it */
+        }
+
+        .message-box button:hover {
+            background-color: #3182ce;
+        }
+
+        /* Peeking Character CSS */
+        #peeking-character {
+            position: fixed;
+            bottom: -200px; /* Start off-screen */
+            left: 50%; /* Initial horizontal position, will be updated by JS */
+            transform: translateX(-50%); /* Center based on its own width */
+            width: 150px; /* Adjust size as needed */
+            height: auto;
+            transition: bottom 0.3s ease-out, left 0.1s linear; /* Added left for smooth following */
+            z-index: 5; /* Below game container but above background */
+        }
+
+        #peeking-character.peeking {
+            bottom: 0; /* Move to half-way up the screen */
+        }
+
+        /* Target Images CSS (for background walking) */
+        .target-background-image {
+            position: fixed; /* Use fixed to position relative to viewport */
+            transform: translate(-50%, -50%); /* Center precisely */
+            height: auto;
+            display: block; /* Always visible for background walking */
+            z-index: 1; /* Ensure it's behind the game container */
+            animation-name: walk-individual;
+            animation-iteration-count: infinite;
+            animation-direction: alternate; /* Moves back and forth */
+            animation-timing-function: linear;
+            animation-fill-mode: forwards; /* Keep the last frame when animation pauses */
+            animation-play-state: running; /* Ensure it starts playing immediately */
+        }
+
+        /* Specific positions and sizes for background targets to add variety and staggered start */
+        #target-image-1 { top: 50%; width: 200px; animation-duration: 10s; animation-delay: 0s; }
+        #target-image-2 { top: 40%; width: 150px; animation-duration: 12s; animation-delay: -2s; } /* Negative delay for immediate movement */
+        #target-image-3 { top: 60%; width: 250px; animation-duration: 15s; animation-delay: -5s; } /* Negative delay for immediate movement */
+
+
+        @keyframes walk-individual {
+            0% { left: 20%; }
+            100% { left: 80%; }
+        }
+
+        /* Cop Image CSS */
+        #cop-image {
+            position: fixed;
+            top: 50%; /* Vertically center the cop */
+            right: -300px; /* Start off-screen to the right */
+            transform: translateY(-50%);
+            width: 250px; /* Adjust size as needed */
+            height: auto;
+            transition: right 0.7s ease-out; /* Smooth transition for sliding */
+            z-index: 6; /* Above peeking character, below game UI */
+        }
+
+        #cop-image.active {
+            right: 0; /* Slide into view */
+        }
+
+        /* Target selection screen styles */
+        #target-selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Responsive grid */
+            gap: 1.5rem;
+            justify-items: center;
+            width: 100%;
+        }
+
+        .target-card {
+            background-color: rgba(74, 85, 104, 0.7); /* Card background */
+            border-radius: 0.75rem;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            border: 2px solid transparent; /* Default border */
+        }
+
+        .target-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .target-card.selected {
+            border-color: #4299e1; /* Blue border for selected */
+            box-shadow: 0 0 15px rgba(66, 153, 225, 0.8); /* Blue glow */
+        }
+
+        .target-card img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .target-card span {
+            color: #e2e8f0;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .checkmark {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            color: #48bb78; /* Green checkmark */
+            font-size: 1.8rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            display: none; /* Hidden by default */
+        }
+
+        .target-card.mastered .checkmark {
+            display: block; /* Show if mastered */
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .game-container, .screen-container {
+                padding: 1.5rem;
+                gap: 1.5rem;
+            }
+            /* Adjust game-screen for smaller screens */
+            #game-screen {
+                left: 10px; /* Closer to edge on small screens */
+                max-width: 90%; /* Allow it to take more width if needed */
+                padding: 1rem;
+                gap: 1rem;
+            }
+            #game-screen h1 {
+                font-size: 1.8rem; /* Smaller font for title */
+            }
+            #game-screen .text-xl {
+                font-size: 1rem; /* Smaller font for progress text */
+            }
+
+            .game-button {
+                font-size: 1rem;
+                padding: 0.6rem 1.5rem;
+            }
+            .status-message {
+                font-size: 1.2rem;
+                height: 2rem;
+            }
+            .peek-bar-container {
+                height: 1.2rem;
+            }
+            #peeking-character {
+                width: 100px;
+            }
+            .target-background-image {
+                width: 100px; /* Smaller on small screens */
+            }
+            #cop-image {
+                width: 200px;
+            }
+            #target-selection-grid {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+                gap: 1rem;
+            }
+            .target-card img {
+                width: 60px;
+                height: 60px;
+            }
+            .message-box {
+                padding: 1rem; /* Adjust padding for content on small screens */
+            }
+            .message-box.jail-busted, .message-box.jail-mastered {
+                padding: 0; /* Keep 0 padding for jail messages */
+            }
+            .message-box p {
+                font-size: 1.5rem; /* Adjust font size for mobile */
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <img id="peeking-character" src="https://i.imgur.com/63eXRFf.jpeg" alt="Peeking Character" class="hidden">
+    <img id="target-image-1" class="target-background-image hidden" src="" alt="Target 1">
+    <img id="target-image-2" class="target-background-image hidden" src="" alt="Target 2">
+    <img id="target-image-3" class="target-background-image hidden" src="" alt="Target 3">
+    <img id="cop-image" src="" alt="Cop" class="hidden"> 
+
+    <audio id="mainBackgroundMusic" src="https://files.catbox.moe/7q34ly.mp3" loop preload="auto"></audio>
+    <audio id="jailSound" src="https://files.catbox.moe/drsi2i.mp3" loop preload="auto"></audio>
+
+    <button id="muteButton" class="fixed top-4 right-4 z-50 p-2 rounded-full bg-gray-700 text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+        <svg id="volumeOnIcon" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.383 3.016A1 1 0 0110 3v14a1 1 0 01-1.617.784L5.5 14H2a1 1 0 01-1-1V7a1 1 0 011-1h3.5L8.383 3.016zM15.546 6.146a.5.5 0 01.707.708L14.707 9.5l1.546 2.646a.5.5 0 01-.707.708L14 10.293l-1.546 2.646a.5.5 0 01-.707-.708L13.293 9.5l-1.546-2.646a.5.5 0 01.707-.708L14 8.707l1.546-2.561z" clip-rule="evenodd"></path></svg>
+        <svg id="volumeOffIcon" class="w-6 h-6 hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.383 3.016A1 1 0 0110 3v14a1 1 0 01-1.617.784L5.5 14H2a1 1 0 01-1-1V7a1 1 0 011-1h3.5L8.383 3.016zM16 8.5a.5.5 0 01.5.5v1a.5.5 0 01-1 0V9a.5.5 0 01.5-.5z" clip-rule="evenodd"></path></svg>
+    </button>
+
+
+    <div id="start-screen" class="screen-container">
+        <h1 class="text-3xl sm:text-4xl font-bold text-center text-white mb-4" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.7);">Tekken's Stalking Simulator</h1>
+        <p class="text-xl text-center text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">Master the shadows. Stay three steps behind... always.</p>
+        <button id="enter-game-button" class="game-button">Start stalking</button>
+    </div>
+
+    <div id="target-selection-screen" class="screen-container hidden">
+        <h2 class="text-2xl sm:text-3xl font-bold text-center text-white mb-4" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.7);">Select Your Target:</h2>
+        <div id="target-selection-grid">
+            </div>
+        <button id="start-peeking-button" class="game-button mt-4" disabled>Start Stalking</button>
+    </div>
+
+    <div id="game-screen" class="screen-container hidden">
+        <h1 class="text-3xl sm:text-4xl font-bold text-center text-white mb-4" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.7);">Peeking at: <span id="current-target-name"></span></h1>
+
+        <div class="text-xl text-center text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">Progress: <span id="peek-progress-display">0%</span></div>
+
+        <div class="peek-bar-container">
+            <div id="peek-bar-fill" class="peek-bar-fill"></div>
+        </div>
+
+        <div id="busted-meter-container" class="peek-bar-container hidden mt-2">
+            <div id="busted-meter-fill" class="peek-bar-fill danger"></div>
+        </div>
+        <div id="status-message" class="status-message">Press 'Stalk' to start...</div>
+
+        <button id="peek-unpeek-button" class="game-button">Peek</button>
+    </div>
+
+    <div id="message-box" class="message-box">
+        <div class="message-box-image-wrapper">
+            <img id="message-box-image" class="message-box-image" src="" alt="Jail Image">
+        </div>
+        <div class="message-box-content">
+            <p id="message-text" class="text-2xl font-semibold"></p>
+            <button id="message-button">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const startScreen = document.getElementById('start-screen');
+        const enterGameButton = document.getElementById('enter-game-button');
+        const targetSelectionScreen = document.getElementById('target-selection-screen');
+        const targetSelectionGrid = document.getElementById('target-selection-grid');
+        const startPeekingButton = document.getElementById('start-peeking-button');
+        const gameScreen = document.getElementById('game-screen');
+
+        const peekBarFill = document.getElementById('peek-bar-fill');
+        const statusMessage = document.getElementById('status-message');
+        const peekUnpeekButton = document.getElementById('peek-unpeek-button');
+        const peekProgressDisplay = document.getElementById('peek-progress-display');
+        const currentTargetNameDisplay = document.getElementById('current-target-name');
+        const messageBox = document.getElementById('message-box');
+        const messageBoxImage = document.getElementById('message-box-image'); // Now an <img> element
+        const messageText = document.getElementById('message-text');
+        const messageButton = document.getElementById('message-button');
+        const bustedMeterContainer = document.getElementById('busted-meter-container');
+        const bustedMeterFill = document.getElementById('busted-meter-fill');
+        const peekingCharacter = document.getElementById('peeking-character');
+        const copImage = document.getElementById('cop-image');
+
+        // Audio Elements
+        const mainBackgroundMusic = document.getElementById('mainBackgroundMusic');
+        const jailSound = document.getElementById('jailSound');
+        // Set initial volume for both audio elements
+        mainBackgroundMusic.volume = 0.5; // Set to 10%
+        jailSound.volume = 0.5; // Set to 10%
+
+        const muteButton = document.getElementById('muteButton');
+        const volumeOnIcon = document.getElementById('volumeOnIcon');
+        const volumeOffIcon = document.getElementById('volumeOffIcon');
+        let isMuted = false;
+
+        // References to background target images
+        const backgroundTargetImages = {
+            'target1': document.getElementById('target-image-1'),
+            'target2': document.getElementById('target-image-2'),
+            'target3': document.getElementById('target-image-3'),
+        };
+        let activeTargetImageElement = null; // Reference to the HTML img element of the currently peeked target
+
+        // Game State Variables
+        let isPeeking = false;
+        let isCopPresent = false;
+        let peekProgress = 0;
+        let gameOver = false;
+        let gameWon = false; // Now indicates if all *masterable* targets are mastered
+        let bustedMeter = 0;
+
+        let selectedTarget = null; // Stores the currently selected target object from config.targets
+
+        // Interval/Timeout IDs
+        let peekProgressInterval = null;
+        let copSpawnInterval = null;
+        let copClearTimeout = null;
+        let bustedMeterInterval = null;
+        let targetPositionInterval = null; // For character following
+
+        // Game Configuration (Adjust for difficulty)
+        const config = {
+            cop: {
+                images: [ // Array of cop image URLs
+                    'https://cdn.abcotvs.com/dip/images/8834034_121620-kgo-chris-khors-hot-cop-img_Image_00-00-00,07.jpg?w=1024',
+                    'https://divorceanswers.com/wp-content/uploads/2022/07/Dating-A-Cop.jpg',
+                    'https://i.imgur.com/DdhNiGK.png'
+                ],
+                // Default cop behavior, will be overridden by target-specific difficulty
+                // These are now just default values, overridden by target.difficulty
+                minSpawnDelay: 2000,
+                maxSpawnDelay: 5000,
+                duration: 2500,
+                unpeekClearDelay: 2000 
+            },
+            busted: {
+                increment: 3,
+                intervalMs: 50
+            },
+            peekIntervalMs: 1000, // ADDED: Defines how often peekProgress increments (every 1 second)
+            targets: [
+                {
+                    id: 'target1',
+                    name: 'Jules',
+                    src: 'https://i.imgur.com/QPVJFxc.png', 
+                    fullSrc: 'https://i.imgur.com/UJWHYcU.png', 
+                    mastered: false,
+                    difficulty: {
+                        peekRequired: 5, // MODIFIED: Now 20 seconds
+                        copMinSpawnDelay: 2000,
+                        copMaxSpawnDelay: 5000,
+                        copDuration: 2500,
+                        bustedIncrement: 3
+                    }
+                },
+                {
+                    id: 'target2',
+                    name: 'Sham',
+                    src: 'https://i.imgur.com/6KDH2l5.png', 
+                    fullSrc: 'https://i.imgur.com/DZqZfk5.png', 
+                    mastered: false,
+                    difficulty: {
+                        peekRequired: 5, // MODIFIED: Now 20 seconds
+                        copMinSpawnDelay: 1500,
+                        copMaxSpawnDelay: 4000,
+                        copDuration: 2000,
+                        bustedIncrement: 5
+                    }
+                },
+                {
+                    id: 'target3',
+                    name: 'Allipup', 
+                    src: 'https://i.imgur.com/PzWeQtL.png', 
+                    fullSrc: 'https://i.imgur.com/X7qzmLW.png', 
+                    mastered: false,
+                    difficulty: {
+                        peekRequired: 5, // MODIFIED: Now 20 seconds
+                        copMinSpawnDelay: 1000,
+                        copMaxSpawnDelay: 2000,
+                        copDuration: 1500,
+                        bustedIncrement: 7
+                    }
+                }
+            ]
+        };
+
+        // --- Sound Functions ---
+        /**
+         * Plays the main background music.
+         */
+        function playMainMusic() {
+            if (!isMuted) {
+                const playPromise = mainBackgroundMusic.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.log("Autoplay prevented or other audio error:", error);
+                        // User interaction might be required to play sound.
+                        // You could add a "Play Music" button here if needed.
+                    });
+                }
+            }
+        }
+
+        /**
+         * Plays the jail sound.
+         */
+        function playJailSound() {
+            if (!isMuted) {
+                jailSound.currentTime = 0; // Rewind to start
+                const playPromise = jailSound.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.log("Jail sound autoplay prevented or other audio error:", error);
+                    });
+                }
+            }
+        }
+
+        /**
+         * Stops all currently playing sounds.
+         */
+        function stopAllSounds() {
+            mainBackgroundMusic.pause();
+            jailSound.pause();
+        }
+
+        /**
+         * Toggles mute state for all sounds.
+         */
+        function toggleMute() {
+            isMuted = !isMuted;
+            if (isMuted) {
+                stopAllSounds();
+                volumeOnIcon.classList.add('hidden');
+                volumeOffIcon.classList.remove('hidden');
+            } else {
+                // Determine which sound should be playing based on current screen/state
+                if (messageBox.style.display === 'flex' && (messageBoxImage.src === 'https://i.imgur.com/Os0rb6P.png')) {
+                    playJailSound();
+                } else if (gameScreen.classList.contains('hidden') && targetSelectionScreen.classList.contains('hidden') && startScreen.classList.contains('hidden')) {
+                    // This means no specific screen is active, music should probably stay off or just play if triggered by button later
+                } else {
+                    playMainMusic();
+                }
+                volumeOnIcon.classList.remove('hidden');
+                volumeOffIcon.classList.add('hidden');
+            }
+        }
+
+
+        // --- Screen Management ---
+
+        /**
+         * Hides all main screens.
+         */
+        function hideAllScreens() {
+            startScreen.classList.add('hidden');
+            targetSelectionScreen.classList.add('hidden');
+            gameScreen.classList.add('hidden');
+        }
+
+        /**
+         * Shows the start screen.
+         */
+        function showStartScreen() {
+            hideAllScreens();
+            startScreen.classList.remove('hidden');
+            showBackgroundTargets(); // Ensure all targets are walking in background
+        }
+
+        /**
+         * Shows the target selection screen and populates it.
+         */
+        function showTargetSelectionScreen() {
+            hideAllScreens();
+            targetSelectionScreen.classList.remove('hidden');
+            populateTargetSelectionGrid();
+            selectedTarget = null; // Clear selection
+            startPeekingButton.disabled = true; // Disable button until target is selected
+            showBackgroundTargets(); // Ensure all targets are walking in background
+        }
+
+        /**
+         * Shows the main game screen.
+         */
+        function showGameScreen() {
+            hideAllScreens();
+            gameScreen.classList.remove('hidden');
+            // Hide all background targets when one is selected for active gameplay
+            hideBackgroundTargets();
+            // Ensure the actively peeked target's image is visible
+            if (activeTargetImageElement) {
+                activeTargetImageElement.classList.remove('hidden');
+                activeTargetImageElement.style.animation = 'walk-individual 10s linear infinite alternate'; // Re-apply animation for following
+                activeTargetImageElement.style.animationPlayState = 'running'; // Ensure it's running
+            }
+            // Ensure peeking character and cop images are visible (cop will be hidden if not active)
+            peekingCharacter.classList.remove('hidden');
+            copImage.classList.remove('hidden');
+        }
+
+        /**
+         * Shows all target images in the background, making them "walk".
+         */
+        function showBackgroundTargets() {
+            config.targets.forEach(target => {
+                const imgElement = backgroundTargetImages[target.id];
+                if (imgElement) {
+                    imgElement.src = target.fullSrc || target.src; // Use fullSrc if available, otherwise face image for background
+                    imgElement.classList.remove('hidden');
+                    imgElement.style.animationPlayState = 'running'; // Ensure animation is running
+                }
+            });
+            // Stop character following when in background view
+            clearInterval(targetPositionInterval);
+            peekingCharacter.classList.add('hidden'); // Hide peeking character
+        }
+
+        /**
+         * Hides all target images from the background.
+         */
+        function hideBackgroundTargets() {
+            config.targets.forEach(target => {
+                const imgElement = backgroundTargetImages[target.id];
+                if (imgElement) {
+                    imgElement.classList.add('hidden');
+                    imgElement.style.animationPlayState = 'paused'; // Pause animation when hidden
+                }
+            });
+        }
+
+
+        // --- Game Functions ---
+
+        /**
+         * Initializes the game state or transitions to start screen.
+         */
+        function initGame() {
+            isPeeking = false;
+            isCopPresent = false;
+            peekProgress = 0;
+            gameOver = false;
+            bustedMeter = 0;
+
+            // Clear any existing intervals/timeouts
+            clearInterval(peekProgressInterval);
+            clearInterval(copSpawnInterval);
+            clearTimeout(copClearTimeout);
+            clearInterval(bustedMeterInterval);
+            clearInterval(targetPositionInterval); // Stop character following
+
+            // Reset UI elements
+            peekBarFill.style.width = `0%`;
+            peekProgressDisplay.textContent = `0%`;
+            statusMessage.textContent = "Press 'Stalk' to start...";
+            peekUnpeekButton.textContent = "Stalk";
+            peekUnpeekButton.disabled = false;
+            messageBox.style.display = 'none';
+            peekBarFill.classList.remove('danger');
+            bustedMeterContainer.classList.add('hidden');
+            bustedMeterFill.style.width = `0%`;
+
+            // Hide character and cop images initially
+            peekingCharacter.classList.add('hidden');
+            peekingCharacter.classList.remove('peeking');
+            copImage.classList.add('hidden');
+            copImage.classList.remove('active');
+
+            // Stop all sounds when game initializes/restarts
+            stopAllSounds();
+
+            // Now, all targets are "masterable"
+            gameWon = config.targets.every(target => target.mastered);
+            if (gameWon) {
+                // If all targets mastered, send to "jail" (win screen)
+                showMessage("You've been sent to jail!", () => {
+                    // Reset all targets to not mastered for replayability
+                    config.targets.forEach(target => target.mastered = false);
+                    gameWon = false; // Reset gameWon status for a new playthrough
+                    showStartScreen(); // Go back to start screen
+                    // No playMainMusic() here as showStartScreen will lead to button press
+                }, 'jail-mastered'); // Add a class for the specific jail background
+            } else {
+                showStartScreen(); // Show start screen normally
+                // No playMainMusic() here as showStartScreen will lead to button press
+            }
+        }
+
+        /**
+         * Populates the target selection grid with target cards.
+         */
+        function populateTargetSelectionGrid() {
+            targetSelectionGrid.innerHTML = ''; // Clear previous targets
+            config.targets.forEach(target => {
+                const targetCard = document.createElement('div');
+                targetCard.classList.add('target-card');
+                targetCard.dataset.targetId = target.id;
+
+                if (target.mastered) {
+                    targetCard.classList.add('mastered');
+                }
+
+                targetCard.innerHTML = `
+                    <img src="${target.src}" alt="${target.name}"> <span>${target.name}</span>
+                    <span class="checkmark">&#10003;</span>
+                `;
+
+                targetCard.addEventListener('click', () => {
+                    selectTarget(target.id);
+                });
+                targetSelectionGrid.appendChild(targetCard);
+            });
+        }
+
+        /**
+         * Selects a target from the target selection screen.
+         * @param {string} targetId - The ID of the selected target.
+         */
+        function selectTarget(targetId) {
+            // Remove 'selected' class from all cards
+            document.querySelectorAll('.target-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Add 'selected' class to the clicked card
+            const selectedCard = document.querySelector(`.target-card[data-target-id="${targetId}"]`);
+            if (selectedCard) {
+                selectedCard.classList.add('selected');
+                selectedTarget = config.targets.find(target => target.id === targetId);
+                startPeekingButton.disabled = false;
+            }
+        }
+
+        /**
+         * Starts a new peek session with the selected target.
+         */
+        function startNewPeekSession() {
+            if (!selectedTarget) {
+                showMessage("Please select a target first!");
+                return;
+            }
+
+            // If a target is already mastered, prompt to pick another.
+            // This now applies to ALL targets as none are impossible.
+            if (selectedTarget.mastered) {
+                showMessage(`You've already mastered ${selectedTarget.name}! Pick another target.`, () => {
+                    showTargetSelectionScreen(); // Go back to selection if mastered
+                    playMainMusic(); // Ensure music resumes if going back to selection
+                });
+                return;
+            }
+
+            // No special auto-lose logic here anymore. All targets are treated normally.
+
+            showGameScreen(); // Transition to game screen
+
+            // Reset game state for the new session
+            isPeeking = false;
+            isCopPresent = false;
+            peekProgress = 0;
+            gameOver = false;
+            bustedMeter = 0;
+
+            // Apply difficulty settings for the selected target
+            currentTargetNameDisplay.textContent = selectedTarget.name;
+            peekBarFill.style.width = `0%`;
+            peekProgressDisplay.textContent = `0%`;
+            statusMessage.textContent = "Press 'Stalk' to start...";
+            peekUnpeekButton.textContent = "Stalk";
+            peekUnpeekButton.disabled = false;
+            bustedMeterContainer.classList.add('hidden');
+            bustedMeterFill.style.width = `0%`;
+
+            // Set the activeTargetImageElement to the chosen one and manage its visibility
+            activeTargetImageElement = backgroundTargetImages[selectedTarget.id];
+            if (activeTargetImageElement) {
+                // Use fullSrc if available, otherwise fall back to src (face image)
+                activeTargetImageElement.src = selectedTarget.fullSrc || selectedTarget.src;
+                // Ensure only the selected target is visible, others are hidden via hideBackgroundTargets
+                activeTargetImageElement.classList.remove('hidden');
+                activeTargetImageElement.style.animation = 'walk-individual 10s linear infinite alternate'; // Make sure animation is on for following
+                activeTargetImageElement.style.animationPlayState = 'running'; // Ensure it's running
+            }
+
+            // Ensure peeking character and cop images are ready
+            peekingCharacter.classList.remove('hidden');
+            copImage.classList.remove('hidden'); // Show cop img container
+            copImage.classList.remove('active'); // Hide actual cop img until it spawns
+
+            startTargetMovement(); // Start character following the active target
+            playMainMusic(); // Ensure music is playing when game screen starts
+        }
+
+        /**
+         * Updates the UI elements based on current game state.
+         */
+        function updateUI() {
+            if (!selectedTarget) { // Prevent errors if updateUI called without selectedTarget
+                peekProgressDisplay.textContent = `0%`;
+                return;
+            }
+            peekBarFill.style.width = `${(peekProgress / selectedTarget.difficulty.peekRequired) * 100}%`;
+            peekProgressDisplay.textContent = `${Math.floor((peekProgress / selectedTarget.difficulty.peekRequired) * 100)}%`;
+
+            if (isCopPresent) {
+                statusMessage.textContent = "Cop!";
+                statusMessage.classList.add('cop-alert');
+                peekBarFill.classList.add('danger');
+                copImage.classList.add('active'); // Show cop image
+            } else if (isPeeking) {
+                statusMessage.textContent = "Stalking...";
+                statusMessage.classList.remove('cop-alert');
+                peekBarFill.classList.remove('danger');
+            } else {
+                statusMessage.textContent = "Safe to Stalk.";
+                statusMessage.classList.remove('cop-alert');
+                peekBarFill.classList.remove('danger');
+            }
+
+            // Manage peeking character visibility
+            if (isPeeking && !gameOver) {
+                peekingCharacter.classList.add('Stalking');
+            } else {
+                peekingCharacter.classList.remove('Stalking');
+            }
+
+            // Game end conditions
+            if (gameOver) {
+                // The message box will override this with specific messages.
+                // This state ensures the button is disabled and images are retracted.
+                statusMessage.textContent = "GAME OVER!";
+                peekUnpeekButton.disabled = true;
+                peekingCharacter.classList.remove('Stalking'); // Ensure character retracts on game over
+                copImage.classList.remove('active'); // Ensure cop retracts on game over
+                clearInterval(targetPositionInterval); // Stop target movement
+                if (activeTargetImageElement) activeTargetImageElement.style.animationPlayState = 'paused'; // Pause target movement
+            }
+        }
+
+        /**
+         * Increments the peek progress bar.
+         */
+        function incrementPeekProgress() {
+            if (gameOver || !selectedTarget) return;
+
+            // All targets now behave normally here
+            if (isPeeking && !isCopPresent) {
+                peekProgress += 1; // MODIFIED: Increment by 1 (representing 1 second)
+                if (peekProgress >= selectedTarget.difficulty.peekRequired) {
+                    peekProgress = selectedTarget.difficulty.peekRequired; // Cap at 100%
+                    masterTarget(selectedTarget.id);
+                }
+            }
+            updateUI();
+        }
+
+        /**
+         * Increments the busted meter when cop is present and peeking.
+         */
+        function incrementBustedMeter() {
+            if (gameOver || !selectedTarget) {
+                clearInterval(bustedMeterInterval);
+                return;
+            }
+
+            if (isCopPresent && isPeeking) {
+                bustedMeter += selectedTarget.difficulty.bustedIncrement;
+                if (bustedMeter >= 100) {
+                    bustedMeter = 100;
+                    gameOver = true;
+                    stopPeeking();
+                    clearInterval(bustedMeterInterval);
+                    stopAllSounds(); // Stop all sounds before showing jail message
+                    showMessage("You've been sent to jail!", initGame, 'jail-busted'); // Use the specific jail background
+                }
+            } else {
+                clearInterval(bustedMeterInterval);
+                bustedMeter = 0;
+                bustedMeterContainer.classList.add('hidden');
+            }
+            bustedMeterFill.style.width = `${bustedMeter}%`;
+        }
+
+        /**
+         * Marks a target as mastered and transitions back to selection screen.
+         * @param {string} targetId - The ID of the mastered target.
+         */
+        function masterTarget(targetId) {
+            const target = config.targets.find(t => t.id === targetId);
+            if (target) {
+                target.mastered = true;
+                stopPeeking(); // Stop all game activity
+
+                // Update the visual of the target card if it's currently on display
+                const targetCard = document.querySelector(`.target-card[data-target-id="${targetId}"]`);
+                if (targetCard) {
+                    targetCard.classList.add('mastered');
+                }
+
+                // Check if ALL targets are mastered
+                gameWon = config.targets.every(t => t.mastered);
+
+                if (gameWon) {
+                    stopAllSounds(); // Stop all sounds before showing jail message
+                    showMessage(`You've been sent to jail!`, initGame, 'jail-mastered'); // Option to restart, with jail background
+                } else {
+                    showMessage(`Target "${target.name}" Mastered! Choose another!`, showTargetSelectionScreen);
+                }
+            }
+        }
+
+        /**
+         * Controls the target image's horizontal movement and makes the peeking character follow.
+         * This now specifically tracks `activeTargetImageElement`.
+         */
+        function updateTargetPosition() {
+            if (!activeTargetImageElement || activeTargetImageElement.classList.contains('hidden')) {
+                // If no active target or it's hidden, stop character movement
+                peekingCharacter.style.left = '50%'; // Reset to center or default
+                return;
+            }
+
+            // Get the current left position of the active target image
+            const targetRect = activeTargetImageElement.getBoundingClientRect();
+            // Update the peeking character's left position to match the target's horizontal center
+            peekingCharacter.style.left = `${targetRect.left + targetRect.width / 2}px`;
+        }
+
+        /**
+         * Starts the target image's walking animation and the character following.
+         */
+        function startTargetMovement() {
+            clearInterval(targetPositionInterval); // Clear any old interval
+            // Call updateTargetPosition frequently to make the character follow
+            targetPositionInterval = setInterval(updateTargetPosition, 50); // Adjust interval for smoother or less smooth following
+        }
+
+        /**
+         * Randomly spawns the cop.
+         */
+        function scheduleCopSpawn() {
+            clearInterval(copSpawnInterval); // Clear any previous scheduler
+            if (gameOver || !selectedTarget) return;
+
+            const minDelay = selectedTarget.difficulty.copMinSpawnDelay;
+            const maxDelay = selectedTarget.difficulty.copMaxSpawnDelay;
+            const randomDelay = Math.random() * (maxDelay - minDelay) + minDelay;
+
+            copSpawnInterval = setTimeout(() => {
+                spawnCop();
+            }, randomDelay);
+        }
+
+        /**
+         * Makes the cop appear.
+         */
+        function spawnCop() {
+            if (gameOver || !selectedTarget) return;
+
+            isCopPresent = true;
+            // Select a random cop image
+            const randomIndex = Math.floor(Math.random() * config.cop.images.length);
+            copImage.src = config.cop.images[randomIndex]; // Set the new cop image
+            updateUI(); // This will show the cop image
+
+            clearInterval(peekProgressInterval); // Pause main peek progress while cop is present
+
+            if (isPeeking) { // If currently peeking when cop appears, start the busted meter
+                clearInterval(bustedMeterInterval);
+                bustedMeterInterval = setInterval(incrementBustedMeter, config.busted.intervalMs);
+                bustedMeterContainer.classList.remove('hidden');
+                bustedMeter = 0;
+                bustedMeterFill.style.width = `0%`;
+            } else {
+                clearInterval(bustedMeterInterval);
+                bustedMeter = 0;
+                bustedMeterContainer.classList.add('hidden');
+            }
+
+            clearTimeout(copClearTimeout);
+            copClearTimeout = setTimeout(() => {
+                // If still peeking after fixed duration, cop leaves
+                if (isPeeking) {
+                    clearCop();
+                }
+            }, selectedTarget.difficulty.copDuration);
+        }
+
+        /**
+         * Makes the cop leave.
+         */
+        function clearCop() {
+            if (gameOver) return;
+
+            isCopPresent = false;
+            clearInterval(bustedMeterInterval);
+            bustedMeter = 0;
+            bustedMeterContainer.classList.add('hidden');
+
+            copImage.classList.remove('active'); // Hide cop image immediately
+
+            updateUI();
+            if (isPeeking) { // If player is still peeking after cop leaves (fixed duration)
+                peekProgressInterval = setInterval(incrementPeekProgress, config.peekIntervalMs);
+            }
+            scheduleCopSpawn();
+        }
+
+        /**
+         * Toggles between peeking and unpeeking state.
+         */
+        function togglePeek() {
+            if (gameOver || !selectedTarget) return;
+
+            if (isPeeking) {
+                stopPeeking();
+            } else {
+                startPeeking();
+            }
+        }
+
+        /**
+         * Starts the peeking action.
+         */
+        function startPeeking() {
+            if (gameOver || !selectedTarget) return;
+
+            isPeeking = true;
+            peekUnpeekButton.textContent = "Stop Stalking";
+            peekingCharacter.classList.add('Stalking');
+            peekProgressInterval = setInterval(incrementPeekProgress, config.peekIntervalMs); // Uses the new peekIntervalMs
+
+            if (isCopPresent) {
+                clearInterval(bustedMeterInterval);
+                bustedMeterInterval = setInterval(incrementBustedMeter, config.busted.intervalMs);
+                bustedMeterContainer.classList.remove('hidden');
+                bustedMeter = 0;
+                bustedMeterFill.style.width = `0%`;
+            } else {
+                scheduleCopSpawn(); // Cop randomly shows up when peeking starts
+            }
+            updateUI();
+        }
+
+        /**
+         * Stops the peeking action.
+         */
+        function stopPeeking() {
+            isPeeking = false;
+            peekUnpeekButton.textContent = "Stalk";
+            peekingCharacter.classList.remove('stalking');
+            clearInterval(peekProgressInterval);
+
+            if (isCopPresent) {
+                // If cop is present when unpeeking, they retreat with a random delay
+                clearTimeout(copClearTimeout);
+                const randomDelay = Math.random() * (config.cop.unpeekClearDelay * 2) + config.cop.unpeekClearDelay; // From 1 to 3 seconds
+                copClearTimeout = setTimeout(() => {
+                    copImage.classList.remove('active');
+                    isCopPresent = false;
+                    clearInterval(bustedMeterInterval);
+                    bustedMeter = 0;
+                    bustedMeterContainer.classList.add('hidden');
+                    updateUI();
+                    scheduleCopSpawn();
+                }, randomDelay);
+
+            } else {
+                updateUI();
+                scheduleCopSpawn();
+            }
+        }
+
+        /**
+         * Displays a custom message box.
+         * @param {string} message - The message to display.
+         * @param {function} onOk - Callback function when OK button is clicked.
+         * @param {string} [imageType] - 'jail-busted' or 'jail-mastered' to set the image.
+         */
+        function showMessage(message, onOk, imageType = null) {
+            messageText.textContent = message;
+            messageBox.style.display = 'flex';
+            peekUnpeekButton.disabled = true;
+
+            // Get references to the image wrapper and the image itself
+            const messageBoxImageWrapper = document.querySelector('.message-box-image-wrapper');
+            const messageBoxImage = document.getElementById('message-box-image');
+
+            // Reset classes and image src
+            messageBox.classList.remove('jail-busted', 'jail-mastered');
+            messageBoxImageWrapper.classList.add('hidden'); // Hide wrapper by default
+            messageBoxImage.src = ''; // Clear existing image
+            messageBoxImage.alt = '';
+
+            // Set the image source and apply specific class based on imageType
+            if (imageType === 'jail-busted' || imageType === 'jail-mastered') {
+                messageBoxImage.src = 'https://i.imgur.com/Os0rb6P.png'; // Set the jail image
+                messageBoxImage.alt = "Jail Image";
+                messageBoxImageWrapper.classList.remove('hidden'); // Show wrapper for jail messages
+                messageBox.classList.add(imageType); // Add the specific jail class to the message box
+                stopAllSounds(); // Stop current music
+                playJailSound(); // Play jail sound
+            }
+            // For other messages, image remains hidden and default styling applies
+
+
+            messageButton.onclick = null;
+            messageButton.onclick = () => {
+                messageBox.style.display = 'none';
+                messageBoxImage.src = ''; // Clear image when message box is hidden
+                messageBoxImage.alt = '';
+                peekUnpeekButton.disabled = false;
+                
+                // If jail sound was playing, stop it and resume main music
+                if (imageType === 'jail-busted' || imageType === 'jail-mastered') {
+                    jailSound.pause();
+                }
+                
+                // Always play main music after message box is dismissed, regardless of type
+                playMainMusic();
+
+                if (onOk) onOk();
+            };
+        }
+
+        // --- Event Listeners ---
+        enterGameButton.addEventListener('click', () => {
+            playMainMusic(); // Play main music when "Enter the Game" is pressed
+            showTargetSelectionScreen();
+        });
+        startPeekingButton.addEventListener('click', startNewPeekSession);
+        peekUnpeekButton.addEventListener('click', togglePeek);
+        messageButton.addEventListener('click', () => { /* Handled in showMessage */ });
+        muteButton.addEventListener('click', toggleMute);
+
+        // Initialize the game when the window loads
+        window.onload = initGame;
+
+    </script>
+</body>
+</html>
