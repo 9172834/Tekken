@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tekken House Cleaning Game</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
@@ -119,13 +118,32 @@
             /* This class is now primarily for other elements and less directly for musicControls */
             display: none;
         }
+
+        /* Styles for the toast message */
+        #toastMessage {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none; /* Allows clicks to pass through */
+        }
+        #toastMessage.show {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
     <div class="game-container">
         <div class="game-info">
             <div id="scoreDisplay">Score: 0</div>
-            <div id="livesDisplay">Lives: 5</div>
+            <div id="livesDisplay">Lives: 0</div>
             <div id="levelDisplay">Level: 1</div>
         </div>
         <canvas id="gameCanvas" width="800" height="600"></canvas>
@@ -139,6 +157,7 @@
         <div id="levelCompleteScreen" class="message-box hidden">
             <h2 id="levelCompleteMessage">Level Complete!</h2>
             <p id="levelCompleteDetails"></p>
+            <button id="buyLifeButton" class="game-button hidden">Buy Life (50 Score)</button>
             <button id="nextLevelButton">Next Level</button>
         </div>
 
@@ -148,11 +167,12 @@
             <button id="restartButton">Play Again</button>
         </div>
 
-        <!-- Music controls will now be hidden by default via CSS 'display: none;' -->
         <div id="musicControls">
             <button id="toggleMusicButton">Pause Music</button>
         </div>
     </div>
+
+    <div id="toastMessage"></div>
 
     <script>
         // Get canvas and context
@@ -173,21 +193,37 @@
         const nextLevelButton = document.getElementById('nextLevelButton');
         const restartButton = document.getElementById('restartButton');
         const toggleMusicButton = document.getElementById('toggleMusicButton');
-        const musicControls = document.getElementById('musicControls'); // Get the music controls div
+        const musicControls = document.getElementById('musicControls');
+        const buyLifeButton = document.getElementById('buyLifeButton');
+        const toastMessage = document.getElementById('toastMessage');
 
         // Game variables
         let score = 0;
-        let lives = 5; // Total misses allowed
+        let lives = 0; // Total misses allowed - Changed to 0
         let level = 1;
         let gameRunning = false;
         let fallingItems = [];
         let itemsCollectedThisLevel = 0;
         let lastFrameTime = 0;
+        const lifeCost = 50; // Cost to buy one life - Changed to 50
 
         // Audio setup
         const backgroundMusic = new Audio('https://files.catbox.moe/3ex5e4.mp3');
-        backgroundMusic.loop = true; // Loop the music
-        backgroundMusic.volume = 0.5; // Set a default volume (0.0 to 1.0)
+        backgroundMusic.loop = true;
+        backgroundMusic.volume = 0.5;
+
+        /**
+         * Displays a temporary "toast" message.
+         * @param {string} message - The message to display.
+         * @param {number} duration - How long the message should be visible in milliseconds.
+         */
+        function showToast(message, duration = 3000) {
+            toastMessage.textContent = message;
+            toastMessage.classList.add('show');
+            setTimeout(() => {
+                toastMessage.classList.remove('show');
+            }, duration);
+        }
 
         /**
          * Toggles the play/pause state of the background music.
@@ -195,7 +231,6 @@
          */
         function toggleMusic() {
             if (backgroundMusic.paused) {
-                // If paused, attempt to play. Check readyState for first play or after network issues.
                 if (backgroundMusic.readyState === 0) {
                     backgroundMusic.load();
                 }
@@ -212,42 +247,42 @@
         // Configuration for each level with updated image links
         const levelConfig = [
             {
-                itemsToCollect: 10, // Number of items to click to win the level
-                spawnInterval: 1200, // How often new items appear (ms)
-                minSpeed: 1, // Minimum falling speed
-                maxSpeed: 2, // Maximum falling speed
-                messyBg: 'https://i.imgur.com/8fZhjrK.png', // Provided "before" image
-                cleanBg: 'https://i.imgur.com/qxPqAyB.jpeg' // Provided "after" image
+                itemsToCollect: 10,
+                spawnInterval: 1200,
+                minSpeed: 1,
+                maxSpeed: 2,
+                messyBg: 'https://i.imgur.com/8fZhjrK.png',
+                cleanBg: 'https://i.imgur.com/qxPqAyB.jpeg'
             },
             {
                 itemsToCollect: 15,
                 spawnInterval: 1000,
                 minSpeed: 2,
                 maxSpeed: 3.5,
-                messyBg: 'https://i.imgur.com/agiXEiK.jpeg', // Level 2 before
-                cleanBg: 'https://i.imgur.com/IWUZfBm.png' // Level 2 after
+                messyBg: 'https://i.imgur.com/agiXEiK.jpeg',
+                cleanBg: 'https://i.imgur.com/IWUZfBm.png'
             },
             {
                 itemsToCollect: 20,
                 spawnInterval: 800,
                 minSpeed: 3,
                 maxSpeed: 5,
-                messyBg: 'https://i.imgur.com/MQVn4Xk.png', // Level 3 before
-                cleanBg: 'https://i.imgur.com/9tUIQKk.png' // Level 3 after
+                messyBg: 'https://i.imgur.com/MQVn4Xk.png',
+                cleanBg: 'https://i.imgur.com/9tUIQKk.png'
             },
             {
                 itemsToCollect: 25,
                 spawnInterval: 600,
                 minSpeed: 4,
                 maxSpeed: 6.5,
-                messyBg: 'https://i.imgur.com/2fcueUk.jpeg', // Level 4 before
-                cleanBg: 'https://i.imgur.com/hB25W8w.jpeg' // Level 4 after
+                messyBg: 'https://i.imgur.com/2fcueUk.jpeg',
+                cleanBg: 'https://i.imgur.com/hB25W8w.jpeg'
             }
         ];
 
         // Emojis for trash items
         const trashEmojis = ['🗑️', '🍎', '🍌', '📜', '🥤', '🍕', '🩹', '🧦', '🧴', '🦴'];
-        const itemSize = 40; // Size of the emoji items
+        const itemSize = 40;
 
         // Image objects for backgrounds
         const backgroundImages = [];
@@ -259,7 +294,7 @@
          */
         function preloadImages() {
             let loadedCount = 0;
-            const totalImages = levelConfig.length * 2; // Each level has a messy and clean image
+            const totalImages = levelConfig.length * 2;
 
             return new Promise(resolve => {
                 levelConfig.forEach((config, index) => {
@@ -271,7 +306,6 @@
                     };
                     messyImg.onerror = () => {
                         console.error('Failed to load messy image:', config.messyBg);
-                        // Use a placeholder if image fails to load
                         messyImg.src = `https://placehold.co/800x600/FF0000/FFFFFF?text=Error+Loading+Messy+L${index+1}`;
                         loadedCount++;
                         if (loadedCount === totalImages) resolve();
@@ -285,7 +319,6 @@
                     };
                     cleanImg.onerror = () => {
                         console.error('Failed to load clean image:', config.cleanBg);
-                        // Use a placeholder if image fails to load
                         cleanImg.src = `https://placehold.co/800x600/00FF00/FFFFFF?text=Error+Loading+Clean+L${index+1}`;
                         loadedCount++;
                         if (loadedCount === totalImages) resolve();
@@ -311,7 +344,7 @@
                 this.height = itemSize;
                 this.speed = speed;
                 this.emoji = emoji;
-                this.isClicked = false; // Flag to mark if item has been clicked
+                this.isClicked = false;
             }
 
             /**
@@ -319,15 +352,15 @@
              * @param {number} deltaTime - Time elapsed since the last frame in milliseconds.
              */
             update(deltaTime) {
-                this.y += this.speed * (deltaTime / 16); // Normalize speed based on 60 FPS (16ms per frame)
+                this.y += this.speed * (deltaTime / 16);
             }
 
             /**
              * Draws the item on the canvas.
              */
             draw() {
-                ctx.font = `${this.width}px Arial`; // Use Arial for emojis, ensures proper rendering
-                ctx.fillText(this.emoji, this.x, this.y + this.height * 0.8); // Adjust Y for emoji baseline
+                ctx.font = `${this.width}px Arial`;
+                ctx.fillText(this.emoji, this.x, this.y + this.height * 0.8);
             }
         }
 
@@ -336,21 +369,20 @@
          */
         function initGame() {
             score = 0;
-            lives = 5;
+            lives = 0; // Starting lives changed to 0
             level = 1;
             fallingItems = [];
             itemsCollectedThisLevel = 0;
             gameRunning = false;
             updateUI();
-            loadLevel(level); // Load the first level's messy background
+            loadLevel(level);
             startScreen.classList.remove('hidden');
             levelCompleteScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
+            buyLifeButton.classList.add('hidden');
 
-            // Hide music controls on game init/restart using style.display
             musicControls.style.display = 'none';
-            // Do NOT pause music here. It should only play after startGame and then loop indefinitely.
-            toggleMusicButton.textContent = 'Play Music'; // Reset button text
+            toggleMusicButton.textContent = 'Play Music';
         }
 
         /**
@@ -359,19 +391,17 @@
         function startGame() {
             startScreen.classList.add('hidden');
             gameRunning = true;
-            lastFrameTime = performance.now(); // Initialize lastFrameTime for the first frame
-            gameLoop(); // Start the animation loop
-            startSpawningItems(); // Begin spawning trash items
+            lastFrameTime = performance.now();
+            gameLoop();
+            startSpawningItems();
 
-            // Show music controls when game starts using style.display
             musicControls.style.display = 'flex';
-            // Play background music when game starts (if not already playing)
             if (backgroundMusic.paused) {
                  backgroundMusic.play().catch(error => {
                      console.error("Autoplay prevented by browser:", error);
                  });
             }
-            toggleMusicButton.textContent = 'Pause Music'; // Update button text
+            toggleMusicButton.textContent = 'Pause Music';
         }
 
         /**
@@ -382,27 +412,26 @@
         function loadLevel(levelNum, isClean = false) {
             const config = levelConfig[levelNum - 1];
             if (!config) {
-                endGame(true); // All levels completed
+                endGame(true);
                 return;
             }
             if (isClean) {
                 currentBackground = backgroundImages[levelNum - 1].clean;
             } else {
                 currentBackground = backgroundImages[levelNum - 1].messy;
-                fallingItems = []; // Clear items when starting a new messy level
+                fallingItems = [];
                 itemsCollectedThisLevel = 0;
             }
             updateUI();
-            draw(); // Redraw immediately when background changes
+            draw();
         }
 
-        let itemSpawnIntervalId; // To store the interval ID for clearing
+        let itemSpawnIntervalId;
 
         /**
          * Starts the interval for spawning new trash items.
          */
         function startSpawningItems() {
-            // Clear any existing interval to prevent multiple spawners
             if (itemSpawnIntervalId) {
                 clearInterval(itemSpawnIntervalId);
             }
@@ -428,7 +457,7 @@
             const x = Math.random() * (canvas.width - itemSize);
             const speed = currentLevelCfg.minSpeed + Math.random() * (currentLevelCfg.maxSpeed - currentLevelCfg.minSpeed);
             const emoji = trashEmojis[Math.floor(Math.random() * trashEmojis.length)];
-            fallingItems.push(new TrashItem(x, -itemSize, speed, emoji)); // Start slightly above canvas
+            fallingItems.push(new TrashItem(x, -itemSize, speed, emoji));
         }
 
         /**
@@ -437,21 +466,19 @@
          * @param {number} deltaTime - Time elapsed since the last frame in milliseconds.
          */
         function update(deltaTime) {
-            // Filter out items that have been clicked
             fallingItems = fallingItems.filter(item => !item.isClicked);
 
             for (let i = fallingItems.length - 1; i >= 0; i--) {
                 const item = fallingItems[i];
                 item.update(deltaTime);
 
-                // Check if item went off screen (missed)
                 if (item.y > canvas.height) {
                     lives--;
                     updateUI();
-                    fallingItems.splice(i, 1); // Remove missed item
+                    fallingItems.splice(i, 1);
                     if (lives <= 0) {
-                        endGame(false); // Game Over
-                        return; // Stop updating if game is over
+                        endGame(false);
+                        return;
                     }
                 }
             }
@@ -462,18 +489,15 @@
          * Draws all game elements on the canvas.
          */
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the entire canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw background image
             if (currentBackground.complete) {
                 ctx.drawImage(currentBackground, 0, 0, canvas.width, canvas.height);
             } else {
-                // Fallback if image not loaded/broken
                 ctx.fillStyle = '#e2e8f0';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
 
-            // Draw falling items
             fallingItems.forEach(item => item.draw());
         }
 
@@ -501,25 +525,22 @@
             if (!gameRunning) return;
 
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;    // Relationship between canvas size and displayed size
-            const scaleY = canvas.height / rect.height;  // for high-DPI screens or resized windows
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
             const mouseX = (event.clientX - rect.left) * scaleX;
             const mouseY = (event.clientY - rect.top) * scaleY;
 
             for (let i = fallingItems.length - 1; i >= 0; i--) {
                 const item = fallingItems[i];
 
-                // Check if click is within the item's bounds
-                // Added a small padding (10px) to make clicking easier for emojis
                 if (mouseX >= item.x - 5 && mouseX <= item.x + item.width + 5 &&
                     mouseY >= item.y - 5 && mouseY <= item.y + item.height + 5) {
-                    if (!item.isClicked) { // Prevent multiple clicks on the same item
-                        item.isClicked = true; // Mark as clicked
-                        score += 10; // Increase score for collecting trash
+                    if (!item.isClicked) {
+                        item.isClicked = true;
+                        score += 10;
                         itemsCollectedThisLevel++;
                         updateUI();
-                        // Item will be filtered out in the next update loop
-                        break; // Only collect one item per click
+                        break;
                     }
                 }
             }
@@ -535,27 +556,40 @@
         }
 
         /**
+         * Allows the player to buy a life with score.
+         */
+        function buyLife() {
+            if (score >= lifeCost) {
+                score -= lifeCost;
+                lives += 1;
+                updateUI();
+                showToast(`You bought a life for ${lifeCost} score! Current lives: ${lives}`);
+            } else {
+                showToast(`Not enough score! Need ${lifeCost} to buy a life.`);
+            }
+        }
+
+        /**
          * Checks if the player has collected enough items to complete the current level.
          */
         function checkLevelCompletion() {
-            if (!gameRunning || level > levelConfig.length) return; // Prevent checking if game isn't running or already finished all levels
+            if (!gameRunning || level > levelConfig.length) return;
 
             const currentLevelCfg = levelConfig[level - 1];
             if (itemsCollectedThisLevel >= currentLevelCfg.itemsToCollect) {
-                stopSpawningItems(); // Stop new items from appearing
-                gameRunning = false; // Pause game logic
+                stopSpawningItems();
+                gameRunning = false;
 
-                // Load clean background immediately to show it under the message box
                 loadLevel(level, true);
 
-                // Show level complete message after a brief delay if needed, but background is already there
                 levelCompleteMessage.textContent = `Level ${level} Complete! Great job!`;
                 levelCompleteDetails.textContent = `You collected ${itemsCollectedThisLevel} items.`;
                 levelCompleteScreen.classList.remove('hidden');
+                buyLifeButton.classList.remove('hidden'); // Ensure buy life button is visible
 
                 if (level === levelConfig.length) {
-                    // If this was the last level
                     nextLevelButton.textContent = "Finish Game";
+                    buyLifeButton.classList.add('hidden'); // No need to buy lives if game is about to end
                 } else {
                     nextLevelButton.textContent = "Next Level";
                 }
@@ -568,18 +602,16 @@
          */
         function endGame(win) {
             gameRunning = false;
-            stopSpawningItems(); // Stop item spawning
-            // Music continues playing as requested
-            musicControls.style.display = 'none'; // Hide music controls on game over
+            stopSpawningItems();
+            musicControls.style.display = 'none';
 
-            // Ensure the last background is drawn before showing the game over screen
             draw();
 
             if (win) {
                 gameOverScreen.classList.remove('hidden');
                 gameOverScreen.querySelector('h2').textContent = "Congratulations!";
                 gameOverDetails.textContent = `You cleaned all ${levelConfig.length} rooms! Final Score: ${score}.`;
-                restartButton.textContent = "Play Again"; // Change button text for full win
+                restartButton.textContent = "Play Again";
             } else {
                 gameOverScreen.classList.remove('hidden');
                 gameOverScreen.querySelector('h2').textContent = "Game Over!";
@@ -594,46 +626,38 @@
         nextLevelButton.addEventListener('click', () => {
             level++;
             if (level <= levelConfig.length) {
-                loadLevel(level); // Load the next level's messy background
-                startSpawningItems(); // Restart spawning for new level
-                gameRunning = true; // Resume game
+                loadLevel(level);
+                startSpawningItems();
+                gameRunning = true;
                 levelCompleteScreen.classList.add('hidden');
-                lastFrameTime = performance.now(); // Reset time for new level to prevent large delta
-                requestAnimationFrame(gameLoop); // Ensure game loop continues
-                // Music is already looping, so no need to explicitly call play here unless it was paused by the user.
-                // It will continue from where it left off.
+                lastFrameTime = performance.now();
+                requestAnimationFrame(gameLoop);
             } else {
-                // If "Finish Game" was clicked on the last level
                 endGame(true);
-                levelCompleteScreen.classList.add('hidden'); // Hide the level complete screen if game ends
+                levelCompleteScreen.classList.add('hidden');
             }
         });
 
-        toggleMusicButton.addEventListener('click', toggleMusic); // Event listener for the new music button
+        buyLifeButton.addEventListener('click', buyLife);
+        toggleMusicButton.addEventListener('click', toggleMusic);
 
-        // Add event listener to the canvas for clicks
         canvas.addEventListener('click', handleClick);
 
         // Responsive canvas resizing
         function resizeCanvas() {
-            // Get the parent container's actual width
             const containerWidth = canvas.parentElement.clientWidth;
-            // Set canvas display size based on container, maintaining aspect ratio
-            const aspectRatio = 800 / 600; // Original width / original height
+            const aspectRatio = 800 / 600;
             let newWidth = containerWidth;
             let newHeight = containerWidth / aspectRatio;
 
-            // Ensure max height is respected for very wide screens
             if (newHeight > 600) {
                 newHeight = 600;
                 newWidth = 600 * aspectRatio;
             }
 
-            // Set the canvas element's attributes (actual pixel dimensions)
             canvas.width = newWidth;
             canvas.height = newHeight;
 
-            // Re-draw everything after resize (important for continuous games)
             draw();
         }
 
@@ -643,11 +667,10 @@
         // Initialize the game when the window loads
         window.onload = function() {
             preloadImages().then(() => {
-                resizeCanvas(); // Set initial canvas size after images load
-                initGame(); // Initialize game state and show start screen (music controls hidden by CSS and JS)
-                // Draw initial empty canvas with first messy background
+                resizeCanvas();
+                initGame();
                 loadLevel(1, false);
-                draw(); // Draw the initial background immediately
+                draw();
             });
         };
 
