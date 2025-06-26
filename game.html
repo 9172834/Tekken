@@ -274,8 +274,6 @@
              transform: translateY(-20px) scale(0.95) opacity(0); /* Animate out to slightly up and fade */
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/gun/lib/not.js"></script>
 </head>
 <body class="selection:bg-yellow-500 selection:text-white">
     <div id="welcomeScreen" class="welcome-overlay">
@@ -311,23 +309,7 @@
             <div id="crosshair" class="crosshair"></div>
         </div>
 
-        <div class="leaderboard-container w-full max-w-sm bg-gray-800 p-6 rounded-lg shadow-xl border-2 border-yellow-500">
-            <h2 class="text-3xl font-bold text-center mb-6 text-yellow-400">Top 10 Scores</h2>
-            <div id="leaderboardList" class="space-y-3">
-                <p class="text-gray-400 text-center">Loading scores...</p>
-            </div>
         </div>
-    </div>
-
-    <div id="gameOverModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-75 z-50 p-4 hidden">
-        <div class="bg-gray-800 p-8 rounded-lg shadow-2xl text-center max-w-md w-full border-4 border-yellow-400 transform scale-0 opacity-0 transition-all duration-300">
-            <p id="gameOverMessage" class="text-3xl font-bold mb-6 text-yellow-300">Game Over! Your score: 0</p>
-            <input type="text" id="usernameInput" placeholder="Enter your username" class="w-full p-3 mb-4 rounded-md bg-gray-700 text-white placeholder-gray-400 border border-gray-600 focus:outline-none focus:border-blue-500" maxlength="15">
-            <button id="submitScoreButton" class="px-6 py-2 text-white font-semibold rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 btn-submit">
-                Submit Score
-            </button>
-        </div>
-    </div>
 
     <audio id="bgMusic" loop>
         <source src="https://files.catbox.moe/valb5m.mp3" type="audio/mpeg">
@@ -354,7 +336,7 @@
     <script type="module">
         // Game state variables
         let score = 0;
-        let gameTime = 20; // seconds - Changed from 60 to 20
+        let gameTime = 20; 
         let timerId;
         let popUpInterval;
         let difficultyChangeInterval; // New interval for changing difficulty
@@ -390,12 +372,12 @@
         const crosshair = document.getElementById('crosshair');
         const loadingSpinner = document.getElementById('loadingSpinner');
 
-        // Modals and related elements
-        const gameOverModal = document.getElementById('gameOverModal');
-        const gameOverMessage = document.getElementById('gameOverMessage');
-        const usernameInput = document.getElementById('usernameInput');
-        const submitScoreButton = document.getElementById('submitScoreButton');
-        const leaderboardList = document.getElementById('leaderboardList');
+        // Modals and related elements - Game Over modal removed
+        // const gameOverModal = document.getElementById('gameOverModal');
+        // const gameOverMessage = document.getElementById('gameOverMessage');
+        // const usernameInput = document.getElementById('usernameInput');
+        // const submitScoreButton = document.getElementById('submitScoreButton');
+        // const leaderboardList = document.getElementById('leaderboardList'); // Leaderboard removed
 
         // Audio elements
         const bgMusic = document.getElementById('bgMusic');
@@ -411,13 +393,6 @@
         startGameSound.volume = 0.8;
         gameOverSound.volume = 0.8;
         whackSounds.forEach(sound => sound.volume = 0.6);
-
-        // Initialize GUN database
-        const gun = Gun('https://gun-peer.herokuapp.com/gun');
-        const highScoresRef = gun.get('tekkengamescore929199');
-
-        // Local cache for scores to manage updates and sorting
-        const scoresCache = {};
 
         // Function to create holes dynamically
         function createHoles(numHoles) {
@@ -515,7 +490,7 @@
             score++;
             scoreDisplay.textContent = score;
 
-            gameTime += 1.2;
+            gameTime += 1.5;
             timeDisplay.textContent = Math.floor(gameTime);
 
             if (Math.random() < 0.4) {
@@ -597,7 +572,7 @@
                     gameOverSound.currentTime = 0;
                     gameOverSound.play().catch(e => console.error("Error playing game over sound:", e));
 
-                    showGameOverModal(score);
+                    displayMessage(`Game Over! Your score: ${score}`); // Display game over message directly
 
                     holes.forEach(hole => {
                         hole.querySelector('.mole-img').classList.remove('popping');
@@ -614,7 +589,7 @@
         }
 
         // Custom message box function (instead of alert)
-        function displayMessage(message, isGameOver = false) {
+        function displayMessage(message) { // Removed isGameOver parameter
             const existingMessage = document.getElementById('gameMessage');
             if (existingMessage) existingMessage.remove();
 
@@ -632,7 +607,7 @@
             );
 
             const messageText = document.createElement('p');
-            messageText.classList.add('text-3xl', 'font-bold', 'mb-6', isGameOver ? 'text-yellow-300' : 'text-blue-300');
+            messageText.classList.add('text-3xl', 'font-bold', 'mb-6', 'text-yellow-300'); // Always yellow for game over/info
             messageText.textContent = message;
 
             const closeButton = document.createElement('button');
@@ -660,109 +635,13 @@
             }, 50);
         }
 
-        // Show Game Over Modal and enable score submission
-        function showGameOverModal(finalScore) {
-            gameOverMessage.textContent = `Game Over! Your score: ${finalScore}`;
-            usernameInput.value = '';
-            gameOverModal.classList.remove('hidden');
-            setTimeout(() => {
-                gameOverModal.querySelector('div').classList.remove('scale-0', 'opacity-0');
-            }, 50);
-        }
-
-        // Submit score to GUN database
-        submitScoreButton.addEventListener('click', () => {
-            const username = usernameInput.value.trim();
-            if (username.length > 0) {
-                const scoreId = `${Date.now()}_${username.replace(/\s/g, '_')}`;
-                const scoreData = {
-                    username: username,
-                    score: score,
-                    timestamp: Date.now()
-                };
-
-                highScoresRef.get(scoreId).put(scoreData, (ack) => {
-                    if (ack.err) {
-                        console.error('Error submitting score:', ack.err);
-                        displayMessage('Failed to submit score: ' + ack.err);
-                    } else {
-                        console.log('Score submitted successfully! ACK:', ack);
-                        displayMessage('Score submitted! Great job!');
-                        gameOverModal.querySelector('div').classList.remove('scale-100', 'opacity-100');
-                        gameOverModal.querySelector('div').classList.add('scale-0', 'opacity-0', 'translate-y-5');
-                        setTimeout(() => {
-                            gameOverModal.classList.add('hidden');
-                            gameOverModal.querySelector('div').classList.remove('translate-y-5');
-                        }, 300);
-                    }
-                });
-            } else {
-                displayMessage('Please enter a username to submit your score.');
-            }
-        });
-
-        // Function to update the leaderboard display from the scoresCache
-        function updateLeaderboardDisplay() {
-            console.log('Updating leaderboard display...');
-            const scoresArray = Object.values(scoresCache).filter(s => s && s.username && s.score !== undefined);
-            console.log('Scores in cache before sorting:', scoresArray);
-
-            const uniqueScores = {};
-            scoresArray.forEach(entry => {
-                if (uniqueScores[entry.username]) {
-                    if (entry.score > uniqueScores[entry.username].score) {
-                        uniqueScores[entry.username] = entry;
-                    }
-                } else {
-                    uniqueScores[entry.username] = entry;
-                }
-            });
-
-            const filteredScoresArray = Object.values(uniqueScores);
-
-            filteredScoresArray.sort((a, b) => b.score - a.score);
-
-            leaderboardList.innerHTML = '';
-
-            if (filteredScoresArray.length === 0) {
-                leaderboardList.innerHTML = '<p class="text-gray-400 text-center">No scores yet. Be the first!</p>';
-            } else {
-                filteredScoresArray.slice(0, 10).forEach((entry, index) => {
-                    const scoreItem = document.createElement('div');
-                    scoreItem.classList.add('flex', 'justify-between', 'items-center', 'p-3', 'bg-gray-700', 'rounded-md', 'shadow-sm', 'text-lg', 'font-medium');
-                    scoreItem.innerHTML = `
-                        <span class="text-yellow-300">${index + 1}.</span>
-                        <span class="text-white flex-grow text-left ml-4">${entry.username}</span>
-                        <span class="text-green-400 font-bold">${entry.score}</span>
-                    `;
-                    leaderboardList.appendChild(scoreItem);
-                });
-                console.log('Leaderboard updated with top scores.');
-            }
-        }
-
-        // Listen for high score updates from GUN
-        function loadHighScores() {
-            console.log('Attempting to load high scores from GUN...');
-            highScoresRef.map().on(function(data, key) {
-                console.log(`Received data for key ${key}:`, data);
-                if (data && data.username && data.score !== undefined) {
-                    scoresCache[key] = data;
-                    updateLeaderboardDisplay();
-                } else if (data === null) {
-                    console.log(`Key ${key} was deleted.`);
-                    delete scoresCache[key];
-                    updateLeaderboardDisplay();
-                }
-            });
-            updateLeaderboardDisplay();
-        }
+        // showGameOverModal and submitScoreButton related functions removed
 
         startButton.addEventListener('click', startGame);
 
         debugButton.addEventListener('click', () => {
             if (imageLoadError) {
-                displayMessage(imageLoadErrorMessage, false);
+                displayMessage(imageLoadErrorMessage);
             }
         });
 
@@ -858,7 +737,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             fetchImages();
-            loadHighScores();
+            // loadHighScores(); // Removed
         });
     </script>
 </body>
