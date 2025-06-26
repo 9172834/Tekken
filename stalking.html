@@ -461,7 +461,7 @@
 </head>
 <body class="antialiased">
 
-    <img id="peeking-character" src="https://i.imgur.com/63eXRFf.jpeg" alt="Peeking Character" class="hidden">
+    <img id="peeking-character" src="" alt="Peeking Character" class="hidden">
     <img id="target-image-1" class="target-background-image hidden" src="" alt="Target 1">
     <img id="target-image-2" class="target-background-image hidden" src="" alt="Target 2">
     <img id="target-image-3" class="target-background-image hidden" src="" alt="Target 3">
@@ -575,6 +575,13 @@
         let copClearTimeout = null;
         let bustedMeterInterval = null;
         let targetPositionInterval = null; // For character following
+
+        // Peeking character images
+        const peekingCharacterImages = [
+            'https://i.imgur.com/gJiXSm2.jpeg',
+            'https://i.imgur.com/f3v4V0W.png',
+            'https://i.imgur.com/gJiXSm2.jpeg'
+        ];
 
         // Game Configuration (Adjust for difficulty)
         const config = {
@@ -772,6 +779,7 @@
             // Stop character following when in background view
             clearInterval(targetPositionInterval);
             peekingCharacter.classList.add('hidden'); // Hide peeking character
+            peekingCharacter.src = ""; // Clear peeking character image
         }
 
         /**
@@ -823,6 +831,7 @@
             peekingCharacter.classList.remove('peeking');
             copImage.classList.add('hidden');
             copImage.classList.remove('active');
+            peekingCharacter.src = ""; // Clear peeking character image
 
             // Stop all sounds when game initializes/restarts
             stopAllSounds();
@@ -928,6 +937,7 @@
             peekUnpeekButton.disabled = false;
             bustedMeterContainer.classList.add('hidden');
             bustedMeterFill.style.width = `0%`;
+            peekingCharacter.src = ""; // Clear peeking character image initially
 
             // Set the activeTargetImageElement to the chosen one and manage its visibility
             activeTargetImageElement = backgroundTargetImages[selectedTarget.id];
@@ -977,9 +987,11 @@
 
             // Manage peeking character visibility
             if (isPeeking && !gameOver) {
-                peekingCharacter.classList.add('peeking'); // FIX: Changed 'Stalking' to 'peeking'
+                peekingCharacter.classList.add('peeking');
+                // The peeking character image is now set only in startPeeking()
             } else {
-                peekingCharacter.classList.remove('peeking'); // FIX: Changed 'Stalking' to 'peeking'
+                peekingCharacter.classList.remove('peeking');
+                peekingCharacter.src = ""; // Clear image when not peeking
             }
 
             // Game end conditions
@@ -989,6 +1001,7 @@
                 statusMessage.textContent = "GAME OVER!";
                 peekUnpeekButton.disabled = true;
                 peekingCharacter.classList.remove('peeking'); // Ensure character retracts on game over
+                peekingCharacter.src = ""; // Clear image on game over
                 copImage.classList.remove('active'); // Ensure cop retracts on game over
                 clearInterval(targetPositionInterval); // Stop target movement
                 if (activeTargetImageElement) activeTargetImageElement.style.animationPlayState = 'paused'; // Pause target movement
@@ -1185,7 +1198,11 @@
 
             isPeeking = true;
             peekUnpeekButton.textContent = "Stop Stalking";
-            peekingCharacter.classList.add('peeking'); // FIX: Changed 'Stalking' to 'peeking'
+            peekingCharacter.classList.add('peeking');
+            // Randomly select and set the peeking character image when starting to peek
+            const randomIndex = Math.floor(Math.random() * peekingCharacterImages.length);
+            peekingCharacter.src = peekingCharacterImages[randomIndex];
+
             peekProgressInterval = setInterval(incrementPeekProgress, config.peekIntervalMs); // Uses the new peekIntervalMs
 
             if (isCopPresent) {
@@ -1206,7 +1223,8 @@
         function stopPeeking() {
             isPeeking = false;
             peekUnpeekButton.textContent = "Stalk";
-            peekingCharacter.classList.remove('peeking'); // FIX: Changed 'stalking' to 'peeking'
+            peekingCharacter.classList.remove('peeking');
+            peekingCharacter.src = ""; // Clear image when not peeking
             clearInterval(peekProgressInterval);
 
             if (isCopPresent) {
