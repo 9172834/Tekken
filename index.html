@@ -522,6 +522,14 @@
         const galleryContainer = document.getElementById('image-gallery-container');
         let gloriousMedia = []; // Renamed to gloriousMedia as it will hold images and videos
 
+        // Utility function to shuffle an array (Fisher-Yates algorithm)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+            }
+        }
+
         /**
          * Fetches media data from a text file and loads them into the gallery.
          * Assumes the text file is named 'images.txt' in the same directory.
@@ -548,6 +556,7 @@
                     })
                     .filter(media => media.src); // Only include if src is present
 
+                shuffleArray(gloriousMedia); // <--- Add this line to shuffle the array
                 loadAllMedia(); // Load media into the DOM after fetching
             } catch (error) {
                 console.error('Error fetching images:', error);
@@ -875,7 +884,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             fetchSlideshowImages(); // Call the new function for the slideshow
             fetchImages(); // Keep this for your gallery section
-
+            
             // Display the welcome modal on initial load, prevent scrolling
             welcomeModalOverlay.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
