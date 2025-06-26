@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match the Tekken!</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #e2e8f0; /* Light text color */
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Container for the game */
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            background-color: #2d3748; /* Slightly lighter dark background for the container */
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 900px; /* Max width for larger screens */
+            position: relative;
+        }
+
+        /* Game board grid */
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); /* Responsive grid */
+            gap: 16px;
+            padding: 16px;
+            width: 100%;
+            justify-content: center; /* Center items in the grid */
+        }
+
+        /* Individual card styling */
+        .card {
+            width: 100%;
+            padding-bottom: 100%; /* Makes the card a square */
+            position: relative;
+            cursor: pointer;
+            perspective: 1000px; /* For 3D flip effect */
+            border-radius: 8px;
+            overflow: hidden; /* Ensures rounded corners on children */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.6s;
+            transform-style: preserve-3d; /* Keeps children in 3D space */
+        }
+
+        .card.matched {
+            opacity: 0.5; /* Fade out matched cards */
+            cursor: default;
+            pointer-events: none; /* Disable clicks on matched cards */
+            transform: scale(0.95); /* Slightly shrink matched cards */
+        }
+
+        /* Inner container for card front/back */
+        .card-inner {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            border-radius: 8px;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg); /* Flip animation */
+        }
+
+        /* Card front (image) */
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden; /* Hide the back when facing away */
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .card-front {
+            transform: rotateY(180deg); /* Start rotated for flip */
+            background-color: #edf2f7; /* Light background for image */
+        }
+
+        .card-front img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Cover the card area */
+            border-radius: 8px;
+        }
+
+        /* Card back (hidden state) */
+        .card-back {
+            background: linear-gradient(135deg, #4299e1, #3182ce); /* Blue gradient for card back */
+            color: #fff;
+            font-size: 3em;
+            font-weight: bold;
+        }
+
+        /* Message box styling */
+        .message-box-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.3s ease-in-out;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .message-box-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .message-box {
+            background-color: #2d3748;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+            transform: translateY(-20px);
+            opacity: 0;
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .message-box-overlay.show .message-box {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .message-box h2 {
+            font-size: 2em;
+            margin-bottom: 15px;
+            color: #4299e1;
+        }
+
+        .message-box p {
+            font-size: 1.2em;
+            margin-bottom: 25px;
+            color: #e2e8f0;
+        }
+
+        .message-box button {
+            background: linear-gradient(135deg, #48bb78, #38a169); /* Green gradient */
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .message-box button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+            background: linear-gradient(135deg, #38a169, #2f855a);
+        }
+
+        /* Responsive adjustments for game board */
+        @media (min-width: 640px) {
+            .game-board {
+                grid-template-columns: repeat(4, 1fr); /* 4 columns on small devices and up */
+            }
+        }
+
+        @media (min-width: 768px) {
+            .game-board {
+                grid-template-columns: repeat(4, 1fr); /* Stay 4 columns on medium devices and up */
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="text-3xl md:text-4xl font-bold text-blue-400 mb-4 text-center">Match the Tekken!</h1>
+
+        <div class="flex flex-col md:flex-row justify-between items-center w-full mb-6 px-4">
+            <div class="text-xl font-semibold mb-2 md:mb-0">
+                Score: <span id="score" class="text-green-400">0</span>
+            </div>
+            <button id="resetButton" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                Reset Game
+            </button>
+        </div>
+
+        <div id="gameBoard" class="game-board">
+            <!-- Cards will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <!-- Message Box HTML -->
+    <div id="messageBoxOverlay" class="message-box-overlay">
+        <div class="message-box">
+            <h2 id="messageBoxTitle"></h2>
+            <p id="messageBoxContent"></p>
+            <button id="messageBoxButton">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        // Array of card images (each image will be duplicated to create pairs)
+        const cardImages = [
+            'https://i.imgur.com/Yfmtlxv.jpeg',
+            'https://i.imgur.com/Hme0Gcr.jpeg',
+            'https://i.imgur.com/J9psNJ7.jpeg',
+            'https://i.imgur.com/IfrVB9b.png',
+            'https://i.imgur.com/fDY5McS.jpeg',
+            'https://i.imgur.com/JaMd7B7.png',
+            'https://i.imgur.com/BDdAdYE.png',
+            'https://i.imgur.com/gJiXSm2.jpeg' // Added new image
+        ];
+
+        let cards = []; // Array to hold the current game cards
+        let flippedCards = []; // Array to hold currently flipped cards (max 2)
+        let matchedPairs = 0; // Count of matched pairs
+        let score = 0; // Player's score
+        let canFlip = true; // Flag to prevent rapid clicking while cards are flipping
+
+        // Get DOM elements
+        const gameBoard = document.getElementById('gameBoard');
+        const scoreDisplay = document.getElementById('score');
+        const resetButton = document.getElementById('resetButton');
+        const messageBoxOverlay = document.getElementById('messageBoxOverlay');
+        const messageBoxTitle = document.getElementById('messageBoxTitle');
+        const messageBoxContent = document.getElementById('messageBoxContent');
+        const messageBoxButton = document.getElementById('messageBoxButton');
+
+        /**
+         * Shuffles an array randomly.
+         * @param {Array} array - The array to shuffle.
+         * @returns {Array} The shuffled array.
+         */
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]]; // ES6 destructuring for swap
+            }
+            return array;
+        }
+
+        /**
+         * Initializes the game board.
+         */
+        function initializeGame() {
+            // Clear existing cards
+            gameBoard.innerHTML = '';
+            flippedCards = [];
+            matchedPairs = 0;
+            score = 0;
+            canFlip = true;
+            scoreDisplay.textContent = score;
+            hideMessageBox(); // Ensure message box is hidden
+
+            // Create pairs from the card images
+            const gameCardImages = [...cardImages, ...cardImages]; // Duplicates images for pairs
+            cards = shuffle(gameCardImages).map((imageSrc, index) => ({
+                id: `card-${index}`, // Unique ID for each card element
+                image: imageSrc, // The image URL for the card face
+                isFlipped: false, // Is the card currently face up?
+                isMatched: false, // Has the card been successfully matched?
+                element: null // Reference to the DOM element for the card
+            }));
+
+            // Render cards to the DOM
+            cards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.classList.add('card');
+                cardElement.dataset.id = card.id; // Store unique ID in dataset
+
+                cardElement.innerHTML = `
+                    <div class="card-inner">
+                        <div class="card-back">?</div>
+                        <div class="card-front">
+                            <img src="${card.image}" alt="Card Image" onerror="this.src='https://placehold.co/150x150/cccccc/333333?text=Error';">
+                        </div>
+                    </div>
+                `;
+
+                // Store reference to the DOM element
+                card.element = cardElement;
+                gameBoard.appendChild(cardElement);
+
+                // Add click listener
+                cardElement.addEventListener('click', () => flipCard(card));
+            });
+        }
+
+        /**
+         * Handles the card flip logic.
+         * @param {Object} card - The card object that was clicked.
+         */
+        function flipCard(card) {
+            // If already flipped, matched, or cannot flip, ignore click
+            if (!canFlip || card.isFlipped || card.isMatched) {
+                return;
+            }
+
+            // Mark card as flipped and add 'flipped' class for animation
+            card.isFlipped = true;
+            card.element.classList.add('flipped');
+            flippedCards.push(card);
+
+            // If two cards are flipped, check for match
+            if (flippedCards.length === 2) {
+                canFlip = false; // Prevent further flips until check is complete
+                setTimeout(checkForMatch, 1000); // Check after a short delay
+            }
+        }
+
+        /**
+         * Checks if the two currently flipped cards match.
+         */
+        function checkForMatch() {
+            const [card1, card2] = flippedCards;
+
+            // If images match
+            if (card1.image === card2.image) {
+                card1.isMatched = true;
+                card2.isMatched = true;
+                card1.element.classList.add('matched');
+                card2.element.classList.add('matched');
+                matchedPairs++;
+                score += 10; // Increase score for a match
+                updateScore();
+
+                // Check if all pairs are matched (game won)
+                if (matchedPairs === cards.length / 2) {
+                    showMessageBox('Congratulations!', `You matched all the cards in ${score} points!`, 'Play Again');
+                }
+            } else {
+                // If images don't match, flip them back
+                card1.isFlipped = false;
+                card2.isFlipped = false;
+                // Remove 'flipped' class after a short delay for animation
+                setTimeout(() => {
+                    card1.element.classList.remove('flipped');
+                    card2.element.classList.remove('flipped');
+                }, 500); // Allow time for the flip back animation
+                score = Math.max(0, score - 2); // Deduct score for mismatch, but not below 0
+                updateScore();
+            }
+
+            flippedCards = []; // Reset flipped cards array
+            canFlip = true; // Allow flipping again
+        }
+
+        /**
+         * Updates the score displayed in the UI.
+         */
+        function updateScore() {
+            scoreDisplay.textContent = score;
+        }
+
+        /**
+         * Displays a custom message box.
+         * @param {string} title - The title of the message box.
+         * @param {string} content - The content/message.
+         * @param {string} buttonText - Text for the button.
+         */
+        function showMessageBox(title, content, buttonText) {
+            messageBoxTitle.textContent = title;
+            messageBoxContent.textContent = content;
+            messageBoxButton.textContent = buttonText;
+            messageBoxOverlay.classList.add('show');
+        }
+
+        /**
+         * Hides the custom message box.
+         */
+        function hideMessageBox() {
+            messageBoxOverlay.classList.remove('show');
+        }
+
+        // Event listener for the reset button
+        resetButton.addEventListener('click', initializeGame);
+
+        // Event listener for the message box button (restarts game)
+        messageBoxButton.addEventListener('click', initializeGame);
+
+        // Initialize the game when the window loads
+        window.onload = initializeGame;
+
+    </script>
+</body>
+</html>
