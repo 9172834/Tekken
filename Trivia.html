@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tekken Trivia Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <audio id="background-audio" src="https://files.catbox.moe/gr0v0g.mp3" loop></audio>
+    <style>
+        /* Custom font for a more 'divine' feel */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Playfair+Display:wght@700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark gray background */
+            color: #e2e8f0; /* Light gray text */
+            position: relative;
+            overflow-x: hidden; /* Prevent horizontal scrollbar */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        h1, h2 {
+            font-family: 'Playfair Display', serif;
+        }
+
+        /* Styles for the floating image (copied from index.html) */
+        #floating-cursor-image {
+            position: absolute;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s ease-out;
+            z-index: 9999;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.7);
+            animation: pulse-glow 2s infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            from { box-shadow: 0 0 10px rgba(255, 255, 0, 0.5); }
+            to { box-shadow: 0 0 20px rgba(255, 255, 0, 0.9); }
+        }
+
+        /* Styles for the new Welcome Modal (copied from index.html) */
+        #welcome-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(45deg, #1a202c, #2d3748, #1a202c);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20000; /* Higher than other modals */
+            transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #welcome-modal-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        #welcome-modal-content {
+            text-align: center;
+            background-color: rgba(45, 55, 72, 0.9); /* Darker gray with some transparency */
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5), 0 5px 15px rgba(0, 0, 0, 0.3);
+            max-width: 90%;
+            width: 500px;
+            border: 2px solid #dc2626; /* red-600 */
+        }
+
+        #welcome-enter-button {
+            background-color: #dc2626; /* Tailwind red-600 */
+            color: white;
+            font-weight: bold;
+            padding: 1rem 2.5rem;
+            border-radius: 9999px; /* rounded-full */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease-in-out;
+            border: none;
+            cursor: pointer;
+            font-size: 1.25rem; /* text-xl */
+            animation: pulsate-button 2s infinite ease-in-out;
+        }
+
+        #welcome-enter-button:hover:not(:disabled) { /* Adjusted hover for disabled state */
+            background-color: #ef4444; /* Tailwind red-500 */
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        #welcome-enter-button:disabled { /* Style for disabled button */
+            background-color: #6b7280; /* Gray-500 */
+            cursor: not-allowed;
+            animation: none; /* Disable pulsation when disabled */
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes pulsate-button {
+            0% { transform: scale(1); box-shadow: 0 0 0 rgba(220, 38, 38, 0.7); }
+            50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(220, 38, 38, 0.9); }
+            100% { transform: scale(1); box-shadow: 0 0 0 rgba(220, 38, 38, 0.7); }
+        }
+
+        /* Game specific styles */
+        .game-container {
+            background-color: #2d3748; /* Darker gray */
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+            border: 2px solid #dc2626; /* Red accent */
+            position: relative; /* For music toggle button */
+            display: none; /* Hidden by default until welcome modal is dismissed */
+            min-height: 400px; /* Ensure a minimum height for layout stability */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .trivia-button {
+            background-color: #dc2626; /* Red-600 */
+            color: white;
+            font-weight: bold;
+            padding: 1rem 2.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease-in-out;
+            border: none;
+            cursor: pointer;
+            font-size: 1.125rem; /* text-lg */
+            margin: 0.5rem;
+            width: calc(50% - 1rem); /* Two buttons per row, with margin */
+            max-width: 200px; /* Limit button width */
+            display: inline-block; /* For side-by-side */
+        }
+
+        .trivia-button:hover:not(:disabled) {
+            background-color: #ef4444; /* Red-500 */
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .trivia-button:disabled {
+            background-color: #6b7280; /* Gray-500 */
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #feedback-message {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: bold;
+            margin-top: 1rem;
+            min-height: 2rem; /* Reserve space to prevent layout shift */
+        }
+
+        .correct {
+            color: #34d399; /* Green-400 */
+        }
+
+        .incorrect {
+            color: #ef4444; /* Red-500 */
+        }
+
+        #next-question-button, #play-again-button {
+            background-color: #10b981; /* Emerald-500 */
+            color: white;
+            font-weight: bold;
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease-in-out;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        #next-question-button:hover, #play-again-button:hover {
+            background-color: #059669; /* Emerald-600 */
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        #music-toggle-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            z-index: 100; /* Ensure it's above other elements */
+        }
+
+        #music-toggle-button:hover {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+
+        #timer-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fcd34d; /* Amber-300 */
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="text-gray-200 antialiased">
+
+    <!-- Welcome Modal Overlay -->
+    <div id="welcome-modal-overlay">
+        <div id="welcome-modal-content">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-red-400 mb-6">
+                Welcome to Tekken Trivia!
+            </h1>
+            <p class="text-lg md:text-xl mb-8 leading-relaxed">
+                Test your knowledge of the Unsung Legend!
+            </p>
+            <button id="welcome-enter-button">
+                Start Challenge!
+            </button>
+        </div>
+    </div>
+
+    <!-- Floating Cursor Image -->
+    <div id="floating-cursor-image" class="hidden md:block">
+        <img src="https://i.imgur.com/WhMRCcm.png" alt="Floating icon" class="w-full h-full object-cover rounded-full">
+    </div>
+
+    <!-- Main Game Container -->
+    <div id="game-container" class="game-container hidden">
+        <button id="music-toggle-button">Pause Music</button>
+
+        <h2 class="text-3xl md:text-4xl font-bold mb-4 text-red-400">Tekken Trivia</h2>
+        <div id="score-display" class="text-xl mb-3">Score: 0</div>
+        <div id="timer-display" class="text-xl mb-6">Time: 30</div>
+
+        <div id="question-display" class="text-2xl mb-8 leading-relaxed min-h-[90px] flex items-center justify-center text-center">
+            Loading questions...
+        </div>
+        <div id="buttons-container" class="flex flex-wrap justify-center">
+            <button id="true-button" class="trivia-button">TRUE</button>
+            <button id="false-button" class="trivia-button">FALSE</button>
+        </div>
+        <div id="feedback-message" class="text-xl mb-4"></div>
+        <button id="next-question-button" class="hidden">Next Question</button>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="hidden">
+            <h3 class="text-3xl md:text-4xl font-bold mb-4 text-red-400">Game Over!</h3>
+            <p id="final-score" class="text-2xl mb-8">Your final score: 0</p>
+            <button id="play-again-button">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Floating Cursor Image Management ---
+        const floatingImage = document.getElementById('floating-cursor-image');
+
+        document.addEventListener('mousemove', (e) => {
+            floatingImage.style.left = `${e.clientX + window.scrollX}px`;
+            floatingImage.style.top = `${e.clientY + window.scrollY}px`;
+        });
+
+        // --- Background Audio Control ---
+        const backgroundAudio = document.getElementById('background-audio');
+        backgroundAudio.volume = 0.1; // Set volume to 10%
+        const musicToggleButton = document.getElementById('music-toggle-button');
+        const welcomeModalOverlay = document.getElementById('welcome-modal-overlay');
+        const welcomeEnterButton = document.getElementById('welcome-enter-button');
+
+        let isPlaying = true; // Assume music starts playing if autoplay is allowed
+
+        // Function to attempt playing audio
+        function tryPlayAudio() {
+            backgroundAudio.play().then(() => {
+                isPlaying = true;
+                musicToggleButton.textContent = 'Pause Music';
+                console.log("Music started successfully.");
+            }).catch(e => {
+                console.log("Autoplay prevented or failed:", e);
+                backgroundAudio.pause(); // Ensure it's paused if autoplay fails
+                isPlaying = false;
+                musicToggleButton.textContent = 'Play Music';
+            });
+        }
+
+        // Event listener for the Welcome modal's Enter button
+        if (welcomeEnterButton) {
+            welcomeEnterButton.addEventListener('click', () => {
+                welcomeModalOverlay.classList.add('hidden'); // Hide the welcome modal
+                document.body.style.overflow = ''; // Re-enable scrolling
+                gameContainer.classList.remove('hidden'); // Show the game container
+                tryPlayAudio(); // Attempt to play music
+                startGame(); // Start the game only after welcome modal is dismissed
+            });
+        }
+
+        // Music toggle button logic
+        if (musicToggleButton && backgroundAudio) {
+            musicToggleButton.addEventListener('click', () => {
+                if (isPlaying) {
+                    backgroundAudio.pause();
+                    musicToggleButton.textContent = 'Play Music';
+                } else {
+                    tryPlayAudio(); // Use the common play function
+                }
+                isPlaying = !isPlaying; // Toggle the state
+            });
+
+            // Handle potential autoplay blocking by browsers
+            backgroundAudio.addEventListener('play', () => {
+                isPlaying = true;
+                musicToggleButton.textContent = 'Pause Music';
+            });
+
+            backgroundAudio.addEventListener('pause', () => {
+                isPlaying = false;
+                musicToggleButton.textContent = 'Play Music';
+            });
+        }
+
+        // --- Trivia Game Logic ---
+        const gameContainer = document.getElementById('game-container');
+        const scoreDisplay = document.getElementById('score-display');
+        const timerDisplay = document.getElementById('timer-display'); // New timer display element
+        const questionDisplay = document.getElementById('question-display');
+        const trueButton = document.getElementById('true-button');
+        const falseButton = document.getElementById('false-button');
+        const feedbackMessage = document.getElementById('feedback-message');
+        const nextQuestionButton = document.getElementById('next-question-button');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const playAgainButton = document.getElementById('play-again-button');
+
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let timerSeconds = 30; // Initial time for each question
+        let timerInterval; // To store the interval ID
+        let bonusTimeAccumulated = 0; // Time added for the next question
+
+        /**
+         * Fetches trivia questions from 'triviaquestions.txt'.
+         * Each line should be formatted as: "Statement|t" or "Statement|f"
+         */
+        async function fetchQuestions() {
+            try {
+                const response = await fetch('triviaquestions.txt');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const text = await response.text();
+                questions = text.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0 && line.includes('|')) // Ensure line has content and a separator
+                    .map(line => {
+                        const parts = line.split('|');
+                        // Ensure there are at least two parts (statement and answer)
+                        if (parts.length >= 2) {
+                            return {
+                                question: parts[0].trim(),
+                                answer: parts[1].trim().toLowerCase() === 't' // 't' for true, anything else (like 'f') for false
+                            };
+                        }
+                        return null; // Return null for invalid lines
+                    })
+                    .filter(q => q !== null); // Filter out any null entries from invalid lines
+
+                if (questions.length === 0) {
+                    questionDisplay.textContent = "No questions found in triviaquestions.txt or invalid format.";
+                    disableButtons();
+                    console.error("No valid questions loaded.");
+                } else {
+                    // Questions loaded, enable the start button
+                    welcomeEnterButton.disabled = false;
+                    // Optional: You could update the welcome modal text here to say "Questions Loaded, Ready to Play!"
+                }
+            } catch (error) {
+                console.error('Error fetching trivia questions:', error);
+                questionDisplay.textContent = "Failed to load trivia questions. Please ensure 'triviaquestions.txt' exists and is correctly formatted.";
+                disableButtons();
+            }
+        }
+
+        /**
+         * Starts a new game of trivia.
+         */
+        function startGame() {
+            currentQuestionIndex = 0;
+            score = 0;
+            bonusTimeAccumulated = 0; // Reset bonus time at the start of a new game
+            updateScoreDisplay();
+            gameOverScreen.classList.add('hidden');
+            gameContainer.classList.remove('hidden'); // Ensure game container is visible after welcome
+            displayQuestion(); // Display the first question when the game starts
+        }
+
+        /**
+         * Starts the countdown timer for the current question.
+         */
+        function startTimer() {
+            stopTimer(); // Clear any existing timer
+            timerSeconds = 30 + bonusTimeAccumulated; // Set initial time plus accumulated bonus
+            bonusTimeAccumulated = 0; // Reset bonus for the current question as it's been applied
+            timerDisplay.textContent = `Time: ${timerSeconds}`;
+
+            timerInterval = setInterval(() => {
+                timerSeconds--;
+                timerDisplay.textContent = `Time: ${timerSeconds}`;
+                if (timerSeconds <= 0) {
+                    handleTimeUp();
+                }
+            }, 1000);
+        }
+
+        /**
+         * Stops the countdown timer.
+         */
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        /**
+         * Handles the event when the timer runs out.
+         */
+        function handleTimeUp() {
+            stopTimer();
+            disableButtons();
+            feedbackMessage.textContent = `Time's up! The answer was ${questions[currentQuestionIndex].answer ? 'True' : 'False'}.`;
+            feedbackMessage.classList.add('incorrect');
+            // Automatically move to the next question after a short delay
+            setTimeout(() => {
+                nextQuestion();
+            }, 2000); // 2-second delay before moving to next question
+        }
+
+        /**
+         * Displays the current question.
+         */
+        function displayQuestion() {
+            if (currentQuestionIndex < questions.length) {
+                const q = questions[currentQuestionIndex];
+                questionDisplay.textContent = q.question;
+                feedbackMessage.textContent = '';
+                feedbackMessage.classList.remove('correct', 'incorrect');
+                nextQuestionButton.classList.add('hidden');
+                enableButtons();
+                startTimer(); // Start timer for the new question
+            } else {
+                endGame();
+            }
+        }
+
+        /**
+         * Checks the user's answer and provides feedback.
+         * @param {boolean} userAnswer - True if the user clicked True, False if False.
+         */
+        function checkAnswer(userAnswer) {
+            stopTimer(); // Stop timer as soon as an answer is given
+            disableButtons(); // Disable buttons after an answer is given
+            const correctAnswer = questions[currentQuestionIndex].answer;
+
+            if (userAnswer === correctAnswer) {
+                score++;
+                feedbackMessage.textContent = 'Correct!';
+                feedbackMessage.classList.add('correct');
+                bonusTimeAccumulated += 15; // Add bonus time for the next question
+            } else {
+                feedbackMessage.textContent = `Incorrect! The answer was ${correctAnswer ? 'True' : 'False'}.`;
+                feedbackMessage.classList.add('incorrect');
+            }
+            updateScoreDisplay();
+            nextQuestionButton.classList.remove('hidden'); // Show next button
+        }
+
+        /**
+         * Moves to the next question or ends the game.
+         */
+        function nextQuestion() {
+            currentQuestionIndex++;
+            displayQuestion();
+        }
+
+        /**
+         * Ends the game and displays the final score.
+         */
+        function endGame() {
+            stopTimer(); // Ensure timer is stopped at game end
+            gameContainer.classList.add('hidden'); // Hide the main game
+            gameOverScreen.classList.remove('hidden'); // Show game over screen
+            finalScoreDisplay.textContent = `Your final score: ${score} out of ${questions.length}`;
+            // Optional: You could add a message based on the score
+            if (score === questions.length) {
+                finalScoreDisplay.textContent += " - A true Tekken Master!";
+            } else if (score > questions.length / 2) {
+                finalScoreDisplay.textContent += " - Not bad, not bad!";
+            } else {
+                finalScoreDisplay.textContent += " - Maybe Tekken knows more about you!";
+            }
+        }
+
+        /**
+         * Updates the score display.
+         */
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `Score: ${score}`;
+        }
+
+        /**
+         * Disables the True/False buttons.
+         */
+        function disableButtons() {
+            trueButton.disabled = true;
+            falseButton.disabled = true;
+        }
+
+        /**
+         * Enables the True/False buttons.
+         */
+        function enableButtons() {
+            trueButton.disabled = false;
+            falseButton.disabled = false;
+        }
+
+        // --- Event Listeners ---
+        trueButton.addEventListener('click', () => checkAnswer(true));
+        falseButton.addEventListener('click', () => checkAnswer(false));
+        nextQuestionButton.addEventListener('click', nextQuestion);
+        playAgainButton.addEventListener('click', startGame);
+
+        // Initial fetch when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Display the welcome modal on initial load, prevent scrolling
+            welcomeModalOverlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            // Disable the start button until questions are loaded
+            welcomeEnterButton.disabled = true;
+            // Display a message that questions are loading (optional, but good for UX)
+            const welcomeMessage = document.querySelector('#welcome-modal-content p');
+            welcomeMessage.textContent = "Loading trivia questions...";
+
+
+            // Fetch questions once the page is loaded (they won't be displayed until the game starts)
+            fetchQuestions().then(() => {
+                // Once questions are fetched, update welcome message and enable button
+                if (questions.length > 0) {
+                    welcomeMessage.textContent = "Test your knowledge of the Unsung Legend!";
+                    welcomeEnterButton.disabled = false;
+                } else {
+                    welcomeMessage.textContent = "No questions found! Check triviaquestions.txt";
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
